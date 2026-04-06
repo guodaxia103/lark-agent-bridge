@@ -100,14 +100,31 @@ def which_node() -> tuple[bool, str]:
     return True, out.strip().lstrip("v")
 
 
+def npm_executable_candidates() -> list[str]:
+    """Paths to npm (Windows often needs npm.cmd)."""
+    out: list[str] = []
+    if sys.platform == "win32":
+        for name in ("npm.cmd", "npm"):
+            p = shutil.which(name)
+            if p and p not in out:
+                out.append(p)
+    else:
+        p = shutil.which("npm")
+        if p:
+            out.append(p)
+    return out
+
+
 def which_npm() -> tuple[bool, str]:
-    path = shutil.which("npm")
-    if not path:
+    cands = npm_executable_candidates()
+    if not cands:
         return False, ""
-    code, out, _ = _run_capture(["npm", "--version"], timeout=10.0)
-    if code != 0:
-        return False, path
-    return True, out.strip()
+    last = cands[-1]
+    for npm_path in cands:
+        code, out, _ = _run_capture([npm_path, "--version"], timeout=10.0)
+        if code == 0:
+            return True, out.strip()
+    return False, last
 
 
 def which_lark_cli() -> str | None:

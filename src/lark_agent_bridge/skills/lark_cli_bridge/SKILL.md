@@ -1,78 +1,81 @@
 ---
 name: lark_cli_bridge
-description: "Use the official Feishu/Lark CLI (lark-cli) on this machine to read calendars, search contacts, send IM, and more. Prefer whitelist commands only; parse JSON output. This is separate from the built-in Feishu bot channel."
+description: "Full access to the official Feishu/Lark CLI (lark-cli) on this machine: any service, shortcut, or raw OpenAPI via lark-cli api. Use discovery commands first (--help, schema), then execute. Separate from the built-in Feishu bot channel; often uses user OAuth. See references/ for domain map and auth rules."
 metadata:
   copaw:
     emoji: "🪶"
     requires: {}
 ---
 
-# Lark CLI Bridge
+# Lark CLI Bridge（飞书官方 CLI 全能力）
 
-When the user asks to operate Feishu/Lark in ways that need the **official command-line tool** (`lark-cli`), use this skill.
+当用户需要通过 **本机安装的 `lark-cli`** 操作飞书（任意开放 API 能力）时，启用本技能。目标：**不遗漏 CLI 已暴露的能力**——包括快捷命令、动态注册的 API 命令、以及裸 `api` 调用。
 
-## Relationship to the built-in Feishu channel
+## 与 CoPaw 内置「飞书通道」的关系
 
-- **Built-in Feishu channel**: bot receives/sends messages inside Feishu apps.
-- **This skill**: the assistant runs **`lark-cli`** on the **same computer** as CoPaw, usually under the **user OAuth** identity configured for `lark-cli`.
+| 方式 | 说明 |
+|------|------|
+| 内置飞书通道 | 机器人在飞书 App 内收发信息 |
+| 本技能 | 在 **CoPaw 所在电脑** 上执行 `lark-cli`，多为 **用户 OAuth** 身份，可访问用户日历、邮箱等资源（取决于授权） |
 
-They can coexist. Do not assume they use the same app credentials.
+两者可并存，凭证与权限模型不同，不要混为一谈。
 
-## Prerequisites
+## 能力范围（如何做到「全功能」）
 
-1. `lark-cli` is installed and on `PATH`.
-2. The user has completed `lark-cli config` and `lark-cli auth login` (or equivalent).
+`lark-cli` 的能力分三层，**按顺序尝试**：
 
-If commands fail with auth errors, tell the user to run in a terminal:
+1. **快捷命令（Shortcuts）**  
+   `lark-cli calendar +agenda` 这类。用 `lark-cli <可能的服务名> --help` 查看当前安装版本下有哪些命令。
+
+2. **已注册的 OpenAPI 命令树**  
+   `lark-cli <service> <resource> <method> --params '...'`。用 `lark-cli <service> --help` 逐级查看。
+
+3. **任意原生 OpenAPI（未被封装时）**  
+   ```bash
+   lark-cli api GET /open-apis/...
+   lark-cli api POST /open-apis/... --data '{...}'
+   ```
+   路径与参数需与飞书开放平台文档一致。可先查 `lark-cli schema <service.resource.method>`（若可用）。
+
+**发现命令（必会）**：
 
 ```bash
-lark-cli auth login --recommend
+lark-cli --help
+lark-cli doctor
 ```
 
-## How to run commands
+详细说明见同目录 **`references/discovery.md`**。
 
-Use the **`execute_shell_command`** tool with a **single** command line. **Do not** chain shell operators (`&&`, `;`, `|`) with unrelated dangerous operations.
+## 必读参考（用 read_file 打开）
 
-Default output is JSON. Example:
+| 文件 | 内容 |
+|------|------|
+| `references/discovery.md` | 如何发现任意子命令、schema、api |
+| `references/domains.md` | 官方 Agent Skills 领域与 `npx skills add` 对应关系 |
+| `references/auth_and_identity.md` | 用户/bot 身份、`--as`、权限与登录 |
+| `references/output_and_errors.md` | JSON、`--jq`、退出码、`_notice` |
+
+若用户已用 `npx skills add larksuite/cli` 安装官方 Skills，那些 Markdown 在**本机 skills 目录**；本包内的 `references` 是精简版，保证在 CoPaw 内可读。
+
+## 执行方式
+
+使用 **`execute_shell_command`**，**一条命令一行**（避免无关的 `&&` / `|`）。默认加 `--format json` 便于解析：
 
 ```bash
-lark-cli --format json calendar +agenda
+lark-cli --format json doctor
 ```
 
 ```bash
-lark-cli --format json auth status
+lark-cli --format json --as user calendar +agenda
 ```
 
-## Allowed areas (examples only)
+需要 **用户身份** 访问个人日历时，加 `--as user`；仅应用后台资源可用 `--as bot`（见 `references/auth_and_identity.md`）。
 
-Adjust to the user request; stay within safe, read-only or normal business operations:
+## 写入 / 删除类操作
 
-- Calendar: shortcuts like `calendar +agenda` (see `lark-cli --help` and official docs).
-- IM / Messenger: follow official shortcut names under the `im` service.
-- Contacts: search users as documented by `lark-cli contact`.
-- Docs / Drive: use documented shortcuts; avoid destructive bulk deletes.
+对**删除资源、批量修改、发大量消息**等，先向用户确认意图；可用 `--dry-run`（若该子命令支持）。
 
-**Do not** run: `config remove`, destructive `rm`-style shell, or piping remote scripts.
+## 安全
 
-## Parsing output
-
-- Successful JSON may include `_notice` hints; still treat the payload as authoritative when `ok` is true.
-- On failure, stderr often contains a JSON envelope with `error.type`, `error.message`, and sometimes `hint`.
-
-## Exit codes (lark-cli)
-
-| Code | Meaning |
-|------|---------|
-| 0 | Success |
-| 1 | API / general error |
-| 2 | Bad arguments |
-| 3 | Auth failure |
-| 4 | Network error |
-| 5 | Internal error |
-
-If exit code is **3**, ask the user to re-authenticate with `lark-cli auth login --recommend`.
-
-## Safety
-
-- **Do not** interpolate raw user text directly into shell commands (injection risk).
-- Prefer fixed subcommands from this whitelist style; if user gives a free-form query, pass it only through `lark-cli` flags documented to accept queries safely.
+- 勿将用户**原始长文本**直接拼进 shell 字符串；使用 `lark-cli` 提供的 `--query`、`--params` 等参数传递。
+- 勿在命令中输出或记录 `appSecret`、token 明文。

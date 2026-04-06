@@ -4,6 +4,15 @@
 
 **Windows · Linux · macOS** 通用 | 当前优先支持 **CoPaw**
 
+### 交付范围与测试说明
+
+| 目标 | 说明 |
+|------|------|
+| **安装** | 支持 `pip install git+https://github.com/guodaxia103/lark-agent-bridge.git@main` 与本仓库 `pip install -e .` |
+| **CoPaw 技能** | `lark_cli_bridge` 含 `SKILL.md` + `references/`（发现命令、`api` 裸调、身份说明、官方 20 域索引），覆盖 **lark-cli 全能力路径**（快捷命令 → 注册 API → `lark-cli api`） |
+| **自动化测试** | `pytest`：清单合并、路径；**集成**：若 PATH 上有 `lark-cli` 则跑 `--version`/`--help` 冒烟 |
+| **人工验收** | 飞书 **config / OAuth** 须在浏览器完成；具体业务 API（如发消息、改表格）依赖租户权限，**无法在通用 CI 中全部调用**，请本地执行 `lark-bridge verify` 并在 CoPaw 对话中试真实任务 |
+
 ---
 
 ## 快速开始（已装过 CoPaw 的用户）
@@ -115,6 +124,7 @@ CoPaw 技能
 | `lark-bridge update` | **更新**飞书技能到最新版本，保留你的个性化设置 | 本工具升级后 |
 | `lark-bridge uninstall` | **干净卸载**，一条命令全部清理 | 不想用了 |
 | `lark-bridge doctor` | **详细诊断**，输出完整报告（可发给别人帮你排查） | fix 修不好时 |
+| `lark-bridge verify` | **冒烟测试** `lark-cli`（version、help、config、auth、doctor） | 装好 CLI 后自检 |
 
 ### setup — 安装流程详解
 

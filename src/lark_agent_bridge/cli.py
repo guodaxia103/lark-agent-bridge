@@ -12,6 +12,7 @@ from lark_agent_bridge import SKILL_DIR_NAME, __version__
 from lark_agent_bridge.core import detect, install
 from lark_agent_bridge.manifest.merge import load_manifest
 from lark_agent_bridge.runtimes import copaw as copaw_rt
+from lark_agent_bridge import self_check
 
 
 def _print_header(title: str) -> None:
@@ -273,7 +274,8 @@ def uninstall_cmd(
         copaw_rt.undeploy_from_workspace(ws)
         click.echo(f"已移除: {ws}")
     if not skill_only:
-        npm = shutil.which("npm")
+        npm_cands = detect.npm_executable_candidates()
+        npm = npm_cands[0] if npm_cands else None
         if npm and (assume_yes or click.confirm("是否卸载全局 npm 包 @larksuite/cli？", default=False)):
             import subprocess
 
@@ -304,6 +306,33 @@ def doctor_cmd() -> None:
         for e in report.errors:
             click.echo(f"  - {e}")
     click.echo(f"COPAW root: {detect.copaw_working_dir()}")
+
+
+@main.command("verify")
+def verify_cmd() -> None:
+    """对 lark-cli 做本地冒烟（version、help、config、auth、doctor）。需已安装 lark-cli。"""
+    exe = detect.which_lark_cli()
+    if not exe:
+        click.secho("未找到 lark-cli，请先: npm install -g @larksuite/cli", fg="red", err=True)
+        raise SystemExit(1)
+    click.echo(f"使用: {exe}\n")
+    steps = self_check.run_verify_suite(exe)
+    click.echo(self_check.format_report(steps))
+    soft = {"config show", "auth status"}
+    failed_hard = [s for s in steps if not s.ok and s.name not in soft]
+    soft_fail = [s for s in steps if not s.ok and s.name in soft]
+    if failed_hard:
+        click.secho(
+            f"\n关键项失败 {len(failed_hard)} 个（--version / --help / doctor）。请重装或检查 PATH。",
+            fg="red",
+        )
+        raise SystemExit(2)
+    if soft_fail:
+        click.secho(
+            "\nconfig / auth 未就绪属正常（需 lark-cli config 与 auth login）。",
+            fg="yellow",
+        )
+    click.secho("\nCLI 本体可用；请在完成飞书配置后于 CoPaw 中试用。", fg="green")
 
 
 # README 中的 install 与 setup 对齐

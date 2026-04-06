@@ -78,7 +78,7 @@ def merge_lark_bridge_entry(
     meta = {
         "name": SKILL_DIR_NAME,
         "description": "通过本机 lark-cli（飞书官方 CLI）操作飞书；与内置飞书通道并行。",
-        "version_text": "0.1.0",
+        "version_text": "0.2.0",
         "commit_text": "",
         "signature": "",
         "source": "customized",

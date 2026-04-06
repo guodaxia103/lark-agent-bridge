@@ -8,6 +8,8 @@ import subprocess
 import sys
 from typing import Callable
 
+from lark_agent_bridge.core.detect import npm_executable_candidates
+
 
 def run_stream(
     args: list[str],
@@ -42,10 +44,22 @@ def run_stream(
         return 124
 
 
+def _npx_executable() -> str | None:
+    if sys.platform == "win32":
+        for name in ("npx.cmd", "npx"):
+            p = shutil.which(name)
+            if p:
+                return p
+    else:
+        return shutil.which("npx")
+    return None
+
+
 def npm_install_lark_cli_global(*, cn_mirror: bool = False) -> tuple[bool, str]:
-    npm = shutil.which("npm")
-    if not npm:
+    cands = npm_executable_candidates()
+    if not cands:
         return False, "npm 未找到"
+    npm = cands[0]
     if cn_mirror:
         subprocess.run(
             [npm, "config", "set", "registry", "https://registry.npmmirror.com"],
@@ -55,7 +69,7 @@ def npm_install_lark_cli_global(*, cn_mirror: bool = False) -> tuple[bool, str]:
     code = run_stream([npm, "install", "-g", "@larksuite/cli"])
     if code != 0:
         return False, f"npm install -g @larksuite/cli 失败 (exit {code})"
-    npx = shutil.which("npx")
+    npx = _npx_executable()
     if not npx:
         return True, "已安装 lark-cli，但未找到 npx（可跳过 skills add）"
     code2 = run_stream([npx, "skills", "add", "larksuite/cli", "-y", "-g"])
