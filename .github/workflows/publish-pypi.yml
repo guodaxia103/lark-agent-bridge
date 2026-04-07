@@ -1,10 +1,10 @@
-# 推送标签 v*（如 v0.3.0）后自动构建并上传到 PyPI。
+# 推送标签 v*（如 v0.3.0）后构建并上传到 PyPI。
 #
-# 配置：仓库 Settings → Secrets and variables → Actions → New repository secret
+# 使用 twine + API Token，不走 OIDC「可信发布」，避免需配置 id-token: write 与 PyPI Trusted Publisher。
+#
+# 配置：仓库 Settings → Secrets and variables → Actions
 #   名称：PYPI_API_TOKEN
-#   值：PyPI 账号 → Account settings → API tokens（scope 选整个账号或仅限本包）
-#
-# 首次发布：在 PyPI 上创建同名项目（上传成功后即出现），或使用 TestPyPI 先测。
+#   值：PyPI → Account settings → API tokens
 
 name: Publish to PyPI
 
@@ -25,13 +25,14 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install build
-        run: pip install build
+      - name: Install build and twine
+        run: pip install build twine
 
       - name: Build sdist and wheel
         run: python -m build
 
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
+      - name: Upload to PyPI
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: twine upload dist/*
