@@ -4,16 +4,6 @@
 
 **Windows · Linux · macOS** 通用 | 当前优先支持 **CoPaw**
 
-### 产品边界（请先读）
-
-| 本工具做什么 | 本工具**不**做什么 |
-|--------------|-------------------|
-| 通过 `pip` 安装 **lark-agent-bridge** 这个**小工具** | **不**替你安装 **CoPaw**（用户一般已装好并用过 `copaw init`） |
-| 向 **已有** CoPaw 工作区写入 **`lark_cli_bridge` 技能** + 合并 `skill.json` | **不**替代你在飞书开放平台的应用创建与 OAuth |
-| 可选：协助安装 **lark-cli**（Node/npm）、跑 `verify` 冒烟 | **不**在自动化里对你租户调用「全部飞书 API」（需账号与权限） |
-
-默认 `lark-bridge setup`：**若检测不到 `copaw` Python 包，会直接报错退出**，并提示你先自行安装 CoPaw；只有显式传入 **`--install-copaw-if-missing`** 才会尝试 `pip install copaw`（不推荐作为常规路径）。
-
 ### 交付范围与测试说明
 
 | 目标 | 说明 |
