@@ -268,11 +268,17 @@ def update_cmd(workspace: str | None, all_workspaces: bool) -> None:
 @click.option("-y", "--yes", "assume_yes", is_flag=True)
 @click.option("--workspace", "-w", default=None)
 @click.option("--all-workspaces", is_flag=True)
+@click.option(
+    "--purge-lark-cli-config",
+    is_flag=True,
+    help="同时清理 ~/.lark-cli 配置与登录凭证（危险操作，默认不清理）",
+)
 def uninstall_cmd(
     skill_only: bool,
     assume_yes: bool,
     workspace: str | None,
     all_workspaces: bool,
+    purge_lark_cli_config: bool,
 ) -> None:
     """移除技能目录与 skill.json 条目；可选卸载 @larksuite/cli。"""
     if not assume_yes:
@@ -288,6 +294,23 @@ def uninstall_cmd(
             import subprocess
 
             subprocess.run([npm, "uninstall", "-g", "@larksuite/cli"], check=False)
+
+    purge = purge_lark_cli_config
+    if not purge and not assume_yes:
+        purge = click.confirm(
+            "是否同时清理 ~/.lark-cli 配置与登录凭证？（将删除本机保存的 app 配置与 token）",
+            default=False,
+        )
+    if purge:
+        cfg = detect.lark_cli_config_dir()
+        if cfg.exists():
+            try:
+                shutil.rmtree(cfg)
+                click.echo(f"已清理 lark-cli 本机配置: {cfg}")
+            except OSError as e:
+                click.secho(f"清理 lark-cli 配置失败: {e}", fg="yellow")
+        else:
+            click.echo(f"未发现 lark-cli 配置目录，无需清理: {cfg}")
     click.echo("完成。卸载本工具请执行: pip uninstall lark-agent-bridge")
 
 

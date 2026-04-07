@@ -230,6 +230,15 @@ def copaw_working_dir() -> Path:
     return Path.home() / ".copaw"
 
 
+def lark_cli_config_dir() -> Path:
+    import os
+
+    raw = os.environ.get("LARK_CLI_HOME", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
+    return Path.home() / ".lark-cli"
+
+
 def list_copaw_workspaces(copaw_root: Path | None = None) -> list[Path]:
     root = copaw_root or copaw_working_dir()
     ws = root / "workspaces"

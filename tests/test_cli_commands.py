@@ -110,6 +110,31 @@ class TestUninstall:
         assert result.exit_code == 0
         mock_undeploy.assert_called_once()
 
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.undeploy_from_workspace")
+    @patch("lark_agent_bridge.cli.detect.lark_cli_config_dir")
+    def test_uninstall_purge_lark_cli_config(
+        self,
+        mock_cfg_dir,
+        mock_undeploy,
+        mock_resolve,
+        tmp_path,
+    ):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+
+        cfg = tmp_path / ".lark-cli"
+        cfg.mkdir(parents=True)
+        (cfg / "config.json").write_text("{}", encoding="utf-8")
+        mock_cfg_dir.return_value = cfg
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["uninstall", "--skill-only", "-y", "--purge-lark-cli-config"])
+        assert result.exit_code == 0
+        assert not cfg.exists()
+        mock_undeploy.assert_called_once()
+
 
 class TestSetupInteractiveGuidance:
     @patch("lark_agent_bridge.cli.detect.run_full_detect")

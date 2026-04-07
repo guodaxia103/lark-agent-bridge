@@ -236,10 +236,11 @@ lark-bridge doctor > report.txt
 
 ```bash
 lark-bridge uninstall --skill-only    # 只卸技能
+lark-bridge uninstall --skill-only --purge-lark-cli-config   # 额外清理 ~/.lark-cli 配置与登录凭证
 lark-bridge uninstall -y              # 连 lark-cli 一起卸
 ```
 
-不会删 `~/.lark-cli` 配置文件夹，也不会卸 pip 里的 lark-agent-bridge（需自行 `pip uninstall lark-agent-bridge`）。
+默认不会删 `~/.lark-cli` 配置文件夹；仅当显式传 `--purge-lark-cli-config`（或交互中选择清理）时才会删除。也不会卸 pip 里的 lark-agent-bridge（需自行 `pip uninstall lark-agent-bridge`）。
 
 ---
 
@@ -295,6 +296,12 @@ lark-cli auth login --recommend
 ```bash
 lark-cli auth logout                   # 清除本机登录
 lark-cli auth login --recommend        # 重新登录
+```
+
+若你准备完整重装并希望清掉本机 `lark-cli` 配置文件，可在卸载时加：
+
+```bash
+lark-bridge uninstall --skill-only --purge-lark-cli-config
 ```
 
 ### Q: 在 CoPaw / Agent 里执行 `auth login` 看不到链接

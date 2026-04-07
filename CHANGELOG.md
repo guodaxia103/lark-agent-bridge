@@ -2,6 +2,19 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.3] — 2026-04-07
+
+### 新增
+
+- `uninstall` 新增 `--purge-lark-cli-config`：可选清理本机 `~/.lark-cli` 配置与登录凭证
+- `uninstall` 交互模式新增“是否清理 lark-cli 配置”的确认步骤
+
+### 修复
+
+- `uninstall` 在配置目录不存在时不报错，提示“无需清理”
+- 补充测试：不误删其它技能、可选清理配置目录、缺失时容错
+- README 补充完整重装场景下的清理命令示例
+
 ## [0.3.2] — 2026-04-07
 
 ### 新增
@@ -40,6 +53,7 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.3]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.3
 [0.3.2]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.2
 [0.3.1]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.1
 [0.3.0]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.0
