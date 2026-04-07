@@ -318,18 +318,19 @@ def verify_cmd() -> None:
     click.echo(f"使用: {exe}\n")
     steps = self_check.run_verify_suite(exe)
     click.echo(self_check.format_report(steps))
-    soft = {"config show", "auth status"}
+    # 未做 config 时 doctor 也会报配置项失败，与「CLI 损坏」不同，按软失败处理
+    soft = {"config show", "auth status", "doctor"}
     failed_hard = [s for s in steps if not s.ok and s.name not in soft]
     soft_fail = [s for s in steps if not s.ok and s.name in soft]
     if failed_hard:
         click.secho(
-            f"\n关键项失败 {len(failed_hard)} 个（--version / --help / doctor）。请重装或检查 PATH。",
+            f"\n关键项失败 {len(failed_hard)} 个（仅 --version / --help 为硬失败）。请检查 PATH 与 lark-cli 安装。",
             fg="red",
         )
         raise SystemExit(2)
     if soft_fail:
         click.secho(
-            "\nconfig / auth 未就绪属正常（需 lark-cli config 与 auth login）。",
+            "\nconfig / auth / doctor 部分未通过：若尚未执行 lark-cli config init，属正常；完成后可再运行 verify。",
             fg="yellow",
         )
     click.secho("\nCLI 本体可用；请在完成飞书配置后于 CoPaw 中试用。", fg="green")
