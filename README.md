@@ -43,10 +43,10 @@ pip install -U lark-agent-bridge
 **备选 A — 按 [版本标签](https://github.com/guodaxia103/lark-agent-bridge/tags) 安装源码 zip**（固定版本，**无需 Git**；与下面命令里的标签名一致即可）：
 
 ```bash
-pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.1.zip"
+pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.2.zip"
 ```
 
-将 `v0.3.1` 换成标签页最新的版本号即可。
+将 `v0.3.2` 换成标签页最新的版本号即可。
 
 **备选 B — 需要本机已安装 Git** — 跟踪 `main` 分支最新开发版：
 
@@ -72,6 +72,8 @@ lark-bridge setup
 
 `setup` 会依次检查 Python、CoPaw、Node、lark-cli，按需安装，再把 `lark_cli_bridge` 技能写入 CoPaw 工作区。
 
+如果检测到 `lark-cli` 还没配置应用或还没登录，`setup` 会打印明确的下一步命令并**立即停止**（不会再让你在同一轮里“按 Enter 继续”），避免小白误操作后误以为已经配置完成。
+
 ### 第 3 步：完成飞书配置与登录
 
 `setup` 会检测飞书配置和登录状态。如果还没配过，它会提示你在终端执行：
@@ -81,7 +83,12 @@ lark-cli config init --new    # 在浏览器里配置飞书应用
 lark-cli auth login --recommend   # 在浏览器里登录飞书授权
 ```
 
-这两步需要在**浏览器**中完成，完成后回到终端按 Enter 继续。
+这两步需要在**浏览器**中完成。完成后无需“按 Enter 继续”，直接重新执行下一条命令即可。
+浏览器操作完成后，请重新执行：
+
+```bash
+lark-bridge setup --skip-lark-check
+```
 
 ### 第 4 步：在 CoPaw 中启用技能
 
@@ -137,7 +144,7 @@ lark-bridge lark wiki spaces list --page-all
 
 ### `setup` / `install`
 
-检查 Python、CoPaw、Node；没有就提示或帮你装；再装全局 lark-cli；最后把技能拷进 CoPaw 工作区。
+检查 Python、CoPaw、Node；没有就提示或帮你装。检测到缺少 `lark-cli` 时，默认会自动安装（除非你显式传 `--no-install-lark-cli`）。最后把技能拷进 CoPaw 工作区。
 
 ```bash
 lark-bridge setup                          # 最常用
@@ -145,6 +152,7 @@ lark-bridge setup --workspace 你的工作区    # 指定工作区
 lark-bridge setup --all-workspaces         # 所有工作区
 lark-bridge setup --cn                     # 国内 npm 镜像
 lark-bridge setup --skip-lark-check --force -y  # 只覆盖技能文件，跳过环境检查
+lark-bridge setup --no-install-lark-cli    # 缺少 lark-cli 时不自动安装（高级选项）
 ```
 
 | 参数 | 含义 |
@@ -152,6 +160,7 @@ lark-bridge setup --skip-lark-check --force -y  # 只覆盖技能文件，跳过
 | `--workspace <名字>` | 只处理指定工作区 |
 | `--all-workspaces` | 所有工作区 |
 | `--cn` | 安装 lark-cli 时使用国内 npm 镜像（不修改全局 npm 配置） |
+| `--no-install-lark-cli` | 缺少 lark-cli 时不自动安装（默认会自动安装） |
 | `--force` | 技能文件夹已存在也覆盖 |
 | `--skip-lark-check` | 不检查 Node / lark-cli / 登录，只部署技能 |
 | `-y` / `--yes` | 少问确认，适合脚本 |

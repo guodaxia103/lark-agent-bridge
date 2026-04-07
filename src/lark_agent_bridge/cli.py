@@ -50,6 +50,11 @@ def main(ctx: click.Context) -> None:
     is_flag=True,
     help="跳过 lark-cli 安装与登录检测，仅部署技能（你已自行配置好 lark-cli）",
 )
+@click.option(
+    "--no-install-lark-cli",
+    is_flag=True,
+    help="检测到缺少 lark-cli 时不自动安装（默认会自动安装）",
+)
 def setup_cmd(
     workspace: str | None,
     all_workspaces: bool,
@@ -57,6 +62,7 @@ def setup_cmd(
     assume_yes: bool,
     force: bool,
     skip_lark_check: bool,
+    no_install_lark_cli: bool,
 ) -> None:
     """一键检查环境、安装 lark-cli（可选）、并把技能写入 CoPaw 工作区。"""
     _print_header("lark-bridge setup")
@@ -114,14 +120,15 @@ def setup_cmd(
         path = detect.which_lark_cli()
         if not path:
             _warn("未找到 lark-cli")
-            if assume_yes or click.confirm("是否执行 npm install -g @larksuite/cli ？", default=True):
-                ok, msg = install.npm_install_lark_cli_global(cn_mirror=cn)
-                if ok:
-                    _ok("lark-cli 安装流程完成")
-                else:
-                    _err(msg)
-                    raise SystemExit(1)
+            if no_install_lark_cli:
+                _err("已设置 --no-install-lark-cli，且当前缺少 lark-cli，无法继续")
+                raise SystemExit(1)
+            click.echo("  正在自动安装 lark-cli（npm install -g @larksuite/cli）…")
+            ok, msg = install.npm_install_lark_cli_global(cn_mirror=cn)
+            if ok:
+                _ok("lark-cli 安装流程完成")
             else:
+                _err(msg)
                 raise SystemExit(1)
             report = detect.run_full_detect()
 
@@ -134,22 +141,22 @@ def setup_cmd(
         report = detect.run_full_detect()
         if not report.lark_config_ok:
             _warn("未检测到有效的 lark-cli 应用配置")
-            click.echo("  请在终端执行（将打开浏览器完成配置）：")
+            click.echo("  请先在终端执行（将打开浏览器完成配置）：")
             click.echo(click.style("    lark-cli config init --new", fg="bright_white"))
-            if not assume_yes:
-                click.pause("  完成后按 Enter 继续…")
-            report = detect.run_full_detect()
-            if not report.lark_config_ok:
-                _err("仍未检测到配置，请确认 config 成功后再运行 lark-bridge setup --skip-lark-check")
-                raise SystemExit(1)
+            click.echo("  完成后再运行：")
+            click.echo(click.style("    lark-bridge setup --skip-lark-check", fg="bright_white"))
+            _err("当前未完成配置，已停止本次 setup（避免误按 Enter 导致假继续）")
+            raise SystemExit(2)
 
         report = detect.run_full_detect()
         if report.lark_auth and not report.lark_auth.token_ok:
             _warn("lark-cli 登录状态可能无效或已过期")
-            click.echo("  请在终端执行：")
+            click.echo("  请先在终端执行：")
             click.echo(click.style("    lark-cli auth login --recommend", fg="bright_white"))
-            if not assume_yes:
-                click.pause("  完成后按 Enter 继续…")
+            click.echo("  完成后再运行：")
+            click.echo(click.style("    lark-bridge setup --skip-lark-check", fg="bright_white"))
+            _err("当前未完成登录，已停止本次 setup（避免误按 Enter 导致假继续）")
+            raise SystemExit(2)
 
     workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
     if not workspaces:

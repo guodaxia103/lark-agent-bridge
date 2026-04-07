@@ -109,3 +109,67 @@ class TestUninstall:
         result = runner.invoke(main, ["uninstall", "--skill-only", "-y"])
         assert result.exit_code == 0
         mock_undeploy.assert_called_once()
+
+
+class TestSetupInteractiveGuidance:
+    @patch("lark_agent_bridge.cli.detect.run_full_detect")
+    @patch("lark_agent_bridge.cli.detect.which_lark_cli", return_value="/usr/bin/lark-cli")
+    @patch("lark_agent_bridge.cli.detect.which_npm", return_value=(True, "10.0.0"))
+    @patch("lark_agent_bridge.cli.detect.which_node", return_value=(True, "20.0.0"))
+    @patch("lark_agent_bridge.cli.detect.pip_show_copaw", return_value=(True, "1.0.2b1"))
+    @patch("lark_agent_bridge.cli.detect.python_info", return_value=(True, "3.12.0"))
+    def test_setup_stops_when_config_missing(
+        self,
+        _mock_py,
+        _mock_copaw,
+        _mock_node,
+        _mock_npm,
+        _mock_which,
+        mock_detect,
+    ):
+        r = DetectReport()
+        r.lark_config_ok = False
+        r.lark_auth = LarkCliAuthInfo(raw={}, token_ok=False)
+        mock_detect.return_value = r
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["setup", "-y"])
+        assert result.exit_code == 2
+        assert "lark-cli config init --new" in result.output
+        assert "lark-bridge setup --skip-lark-check" in result.output
+
+
+class TestSetupAutoInstallLarkCli:
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.deploy_to_workspace")
+    @patch("lark_agent_bridge.cli.detect.run_full_detect", return_value=_mock_report())
+    @patch("lark_agent_bridge.cli.install.npm_install_lark_cli_global", return_value=(True, "ok"))
+    @patch("lark_agent_bridge.cli.detect.which_lark_cli", side_effect=[None, "/usr/bin/lark-cli"])
+    @patch("lark_agent_bridge.cli.detect.which_npm", return_value=(True, "10.0.0"))
+    @patch("lark_agent_bridge.cli.detect.which_node", return_value=(True, "20.0.0"))
+    @patch("lark_agent_bridge.cli.detect.pip_show_copaw", return_value=(True, "1.0.2b1"))
+    @patch("lark_agent_bridge.cli.detect.python_info", return_value=(True, "3.12.0"))
+    def test_setup_auto_installs_lark_cli_when_missing(
+        self,
+        _mock_py,
+        _mock_copaw,
+        _mock_node,
+        _mock_npm,
+        _mock_which_lark,
+        mock_install_lark,
+        _mock_detect,
+        mock_deploy,
+        mock_resolve,
+        tmp_path,
+    ):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        mock_deploy.return_value = ws / "skills" / "lark_cli_bridge"
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["setup", "-y"])
+
+        assert result.exit_code == 0
+        assert "正在自动安装 lark-cli" in result.output
+        mock_install_lark.assert_called_once()
