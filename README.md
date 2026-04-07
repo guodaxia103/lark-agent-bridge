@@ -40,7 +40,7 @@ pip install -U lark-agent-bridge
 
 若 PyPI 上暂时搜不到包（例如维护者尚未完成首次上传），可用下面两种方式之一，**同样不需要安装 Git**：
 
-**备选 A — 按 [GitHub Release](https://github.com/guodaxia103/lark-agent-bridge/releases) 标签安装源码包**（固定版本，与发布说明中的版本号一致）：
+**备选 A — 按 [版本标签](https://github.com/guodaxia103/lark-agent-bridge/tags) 安装源码 zip**（固定版本，**无需 Git**；与下面命令里的标签名一致即可）：
 
 ```bash
 pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.0.zip"

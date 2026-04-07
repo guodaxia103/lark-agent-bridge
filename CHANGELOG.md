@@ -21,4 +21,4 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
-[0.3.0]: https://github.com/guodaxia103/lark-agent-bridge/releases/tag/v0.3.0
+[0.3.0]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.0
