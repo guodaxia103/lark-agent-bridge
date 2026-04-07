@@ -20,6 +20,11 @@ lark-cli --format json ... --jq '.some.path'
 
 stderr 常为 JSON envelope：`ok: false`、`error.type`、`error.message`、`hint`。
 
+## `auth login` 的输出（例外）
+
+- **默认**：提示语与 **授权链接** 写在 **stderr**；进程会长时间阻塞直到用户完成浏览器授权，此期间 **stdout 可能几乎为空**。若你的环境只显示 stdout，会误以为「没有链接」。
+- **Agent / IDE**：对 **`auth login` 子命令** 追加 **`--json`**，则设备授权信息在 **stdout** 输出 JSON（与「其它命令的 `--format json`」无关，不要混用）。详见 `auth_and_identity.md`。
+
 ## 退出码（常见约定）
 
 | 码 | 含义 |

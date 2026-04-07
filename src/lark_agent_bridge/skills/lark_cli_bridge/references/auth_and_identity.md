@@ -18,8 +18,29 @@
 
 错误 JSON 中常有 `permission_violations`、`console_url`、`hint`。
 
-- User：按提示执行 `lark-cli auth login --scope "..."` 或 `--recommend`。
+- User：按提示执行 `lark-cli auth login --scope "..."` 或 `--recommend`（见下节 **Agent / IDE** 建议加 `--json`）。
 - Bot：引导用户打开 `console_url` 在后台开通权限。
+
+## Agent / IDE 中执行 `auth login`（推荐 `--json`）
+
+**现象**：默认（不加 `--json`）时，授权链接印在 **stderr**，成功后的业务 JSON 也在 **stdout** 很少；许多 IDE / Agent 面板只展示 **stdout**，或等进程结束才合并流，看起来像「很久没有任何输出」。
+
+**做法（仅影响本条命令，不改变其它子命令行为）**：
+
+1. **优先**：在原有 `scope` / `domain` / `recommend` 参数基础上 **追加 `--json`**。授权 URL 与 `user_code` 会在 **stdout** 打出一行 JSON（字段含 `verification_uri_complete`、`verification_uri` 等），便于 Agent 解析并展示给用户。OAuth 流程与默认模式相同，命令仍会 **阻塞轮询** 直到用户在浏览器完成授权或超时。
+2. **可选**：`--no-wait` —— 仅发起设备授权并 **立即** 在 stdout 输出 JSON（含 `verification_url`、`device_code`），再让用户执行第二条：`lark-cli auth login --device-code <DEVICE_CODE>` 完成轮询（适合要先把链接交给用户、再后台等待的场景）。
+
+**示例**（与仅缺 scope 时一致，多一个 `--json`）：
+
+```bash
+lark-cli auth login --scope "space:document:retrieve" --json
+```
+
+```bash
+lark-cli auth login --recommend --json
+```
+
+**说明**：`--json` / `--no-wait` **只作用于 `auth login` 子命令**；`drive`、`wiki`、`calendar` 等其它命令仍按各自文档使用 `--format json` 等，**无需**因本节而改动。
 
 ## 配置应用
 
@@ -30,6 +51,21 @@ lark-cli config init --new
 ```
 
 在终端中按提示在浏览器完成（需用户本人操作）。
+
+## 清除本机授权与重新登录
+
+以下为 **`lark-cli auth`** 子命令（非 `lark-bridge`）。
+
+| 目的 | 命令 |
+|------|------|
+| 退出登录、清掉本机保存的用户 token | `lark-cli auth logout` |
+| 重新授权（推荐/按需 scope） | `lark-cli auth login --recommend` 或 `lark-cli auth login --scope "..."` |
+| 查看当前登录与 token 状态 | `lark-cli auth status`（可选 `--verify` 联网校验） |
+| 列出已登录用户 | `lark-cli auth list` |
+| 查询应用已开通的用户权限（开放平台侧） | `lark-cli auth scopes` |
+| 检查当前 token 是否包含指定 scope | `lark-cli auth check --scope "scope1 scope2"` |
+
+**说明**：`logout` 只清除**本机**凭证；若要在飞书账号侧撤销对某应用的授权，需在飞书客户端或开放平台按官方入口操作。子命令列表以 `lark-cli auth --help` 为准。
 
 ## 安全
 

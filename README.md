@@ -10,7 +10,7 @@
 |------|------|
 | **安装** | 支持 `pip install git+https://github.com/guodaxia103/lark-agent-bridge.git@main` 与本仓库 `pip install -e .` |
 | **CoPaw 技能** | `lark_cli_bridge` 含 `SKILL.md` + `references/`（发现命令、`api` 裸调、身份说明、官方 20 域索引），覆盖 **lark-cli 全能力路径**（快捷命令 → 注册 API → `lark-cli api`） |
-| **自动化测试** | `pytest`：清单合并、路径、**模拟 CoPaw 工作区目录的完整 deploy**（验证 SKILL 与 `skill.json`，不启动 CoPaw 进程）；**集成**：若 PATH 上有 `lark-cli` 则跑 CLI 冒烟 |
+| **自动化测试** | `pytest`：清单合并、路径、**模拟向 CoPaw 工作区写入技能**（验证 SKILL 与 `skill.json`，不启动 CoPaw 进程）；**集成**：若 PATH 上有 `lark-cli` 则跑 CLI 冒烟 |
 | **人工验收** | 飞书 **config / OAuth** 须在浏览器完成；具体业务 API（如发消息、改表格）依赖租户权限，**无法在通用 CI 中全部调用**，请本地执行 `lark-bridge verify` 并在 CoPaw 对话中试真实任务 |
 
 ---
@@ -51,42 +51,35 @@ pip install -e ".[dev]"
 lark-bridge setup
 ```
 
-就这两步。`setup` 会**自动帮你做所有事**，遇到需要你操作的地方会**停下来用中文告诉你下一步该怎么做**：
+与上面等价：`lark-bridge install`（同一命令的别名）。
+
+就这两步。`setup` 会检查 Python / CoPaw / Node，按需安装全局 `lark-cli`（并尝试 `npx skills add larksuite/cli`），再把 `lark_cli_bridge` 写入 CoPaw 工作区。**飞书应用配置与用户登录**需你在本机执行 `lark-cli config init --new`、`lark-cli auth login ...`（在浏览器完成）；`setup` 会检测状态并在交互模式下提示你执行上述命令后按 Enter，**不会由本工具替你打印可点击的飞书 OAuth 链接**（链接由 `lark-cli` 在运行时输出）。
+
+下面为**示意**：实际行首为 `[✓]` / `[!]` / `[×]` 等，且随环境变化。
 
 ```text
-[检查] Python 3.12.1 ................................. 通过
-[检查] CoPaw 1.0.2b1 ................................. 通过
-[检查] Node.js / npm .................................. 未找到
-  └─ 请先安装 Node.js：https://nodejs.org/
-     Windows 用户也可以运行：winget install OpenJS.NodeJS.LTS
-     安装好后重新运行 lark-bridge setup
+  [✓] Python 3.12.1
+  [✓] CoPaw 包已安装 (1.0.2b1)
+  [✓] Node.js v20.11.0
+  [✓] npm 10.2.4
+  [✓] lark-cli: C:\...\npm\lark-cli.CMD
+  …（若未配置应用）…
+  [!] 未检测到有效的 lark-cli 应用配置
+      请在终端执行（将打开浏览器完成配置）：
+        lark-cli config init --new
+      完成后按 Enter 继续…
+  …（若未登录或 token 无效）…
+  [!] lark-cli 登录状态可能无效或已过期
+      请在终端执行：
+        lark-cli auth login --recommend
+      完成后按 Enter 继续…
+  部署到工作区: ...\workspaces\default
+  [✓] 已写入 ...\skills\lark_cli_bridge 与 skill.json
+
+  完成。请在 CoPaw 控制台新开对话，并在技能中启用 lark_cli_bridge（若未启用）。
 ```
 
-```text
-[检查] Node.js v20.11.0 ............................... 通过
-[安装] lark-cli ....................................... 安装中...
-[安装] lark-cli 官方 Agent Skills ..................... 安装中...
-[配置] 飞书应用 .......................................
-  └─ 请在浏览器中打开以下链接，按页面提示完成操作：
-     https://open.feishu.cn/app?...
-     完成后回到这里，按 Enter 继续 ▌
-```
-
-```text
-[登录] 飞书授权 .......................................
-  └─ 请在浏览器中打开以下链接并登录：
-     https://open.feishu.cn/open-apis/authen/...
-     完成后回到这里，按 Enter 继续 ▌
-```
-
-```text
-[部署] 写入 CoPaw 技能 ................................ 完成
-[验证] lark-cli --version → 1.0.4 .................... 通过
-
-✅ 全部就绪！
-   请在 CoPaw 控制台新开一个对话，试着说：
-   「帮我看看今天飞书日历有什么安排」
-```
+环境已就绪、只想**更新技能文件**时可用：`lark-bridge setup --skip-lark-check --force -y`（含义见下文「setup — 安装流程详解」）。
 
 **第三步（可选）：确认状态**
 
@@ -94,197 +87,271 @@ lark-bridge setup
 lark-bridge status
 ```
 
-输出一目了然：
+更多命令（`update`、`fix`、`uninstall` 等）见下文 **「所有命令（小白版）」** 一节（可搜索这几个字跳转）。
+
+以下为**结构示意**；实际为若干行键值输出，并含 `技能目录存在:`、`skill.json` 中 `enabled` / `channels` 等。
 
 ```text
-环境
-  Python ............... 3.12.1     ✓
-  CoPaw ................ 1.0.2b1    ✓
-  Node.js .............. v20.11.0   ✓
-  npm .................. 10.2.4     ✓
-  lark-cli ............. 1.0.4      ✓
-
-飞书
-  应用配置 ............. 已配置     ✓
-  登录状态 ............. 已登录     ✓  (过期时间: 2026-04-13)
-
-CoPaw 技能
-  lark_cli_bridge ...... 已启用     ✓  (工作区: default)
+Python: 3.12.1  ✓
+CoPaw:  1.0.2b1  ✓
+Node:   v20.11.0  ✓
+npm:    10.2.4  ✓
+lark-cli: C:\...\lark-cli.CMD (1.0.x) ✓
+飞书应用配置: 已配置
+登录状态: 正常
+技能 lark_cli_bridge: enabled=True channels=[...]
+技能目录存在: True (...\workspaces\default\skills\lark_cli_bridge)
 ```
 
 ---
 
-## 所有命令一览
+## 所有命令（小白版）
 
-| 命令 | 一句话说明 | 什么时候用 |
-|------|-----------|-----------|
-| `lark-bridge setup` | **一键安装配置**，缺啥装啥，全程中文提示 | 第一次用 |
-| `lark-bridge status` | **看当前状态**，哪些通过、哪些有问题 | 想确认是否正常 |
-| `lark-bridge fix` | **自动修复**常见问题 | 出了问题先跑这个 |
-| `lark-bridge update` | **更新**飞书技能到最新版本，保留你的个性化设置 | 本工具升级后 |
-| `lark-bridge uninstall` | **干净卸载**，一条命令全部清理 | 不想用了 |
-| `lark-bridge doctor` | **详细诊断**，输出完整报告（可发给别人帮你排查） | fix 修不好时 |
-| `lark-bridge verify` | **冒烟测试** `lark-cli`（version、help、config、auth、doctor） | 装好 CLI 后自检 |
-
-### setup — 安装流程详解
+先记三件事：**这条命令是干什么的 → 我什么时候用 → 复制下面哪一行**。  
+不确定有哪些子命令时，随时在终端运行：
 
 ```bash
-# 最简用法（推荐）
-lark-bridge setup
-
-# 指定 CoPaw 工作区（如果你有多个 agent）
-lark-bridge setup --workspace my_agent
-
-# 给所有工作区都装上
-lark-bridge setup --all-workspaces
-
-# 国内网络慢？自动切换镜像源
-lark-bridge setup --cn
+lark-bridge --help
 ```
 
-`setup` 内部做的事（你不需要手动做，列出来是让你放心）：
+顶层还有：`lark-bridge --version`。
+
+### 两套命令别混了
+
+| 你在终端里敲的 | 是谁 | 干什么 |
+|----------------|------|--------|
+| **`lark-bridge …`** | 本仓库提供的工具 | 检查环境、把 **`lark_cli_bridge` 技能**写入 CoPaw、卸载技能等 |
+| **`lark-cli …`** | 飞书官方命令行（`setup` 会帮你装） | 调飞书 API、**登录/退出登录/查权限**等 |
+
+下面分别给出 **子命令全量表**（与 `lark-bridge --help` / `lark-cli auth --help` 一致）；**清除授权、重新授权**在第二张表（`lark-cli auth`），不在 `lark-bridge` 里。
+
+---
+
+### `lark-bridge` 子命令全量（仅下列，无 `deploy` 等别名）
+
+| 命令 | 一句话 | 典型场景 |
+|------|--------|----------|
+| **`lark-bridge setup`** | 一键检查环境 → 按需装 `lark-cli` → 部署技能到 CoPaw | 第一次用、重装 |
+| **`lark-bridge install`** | 与 **`setup` 完全相同**（别名，二选一） | 同上 |
+| **`lark-bridge status`** | 打印 Python / CoPaw / Node / lark-cli / 飞书配置 / 技能是否在 | 自检、排错前先看 |
+| **`lark-bridge update`** | 用当前 bridge 自带的技能模板覆盖工作区技能，保留 `skill.json` 里已有 `config` | pip 升级本工具后同步技能 |
+| **`lark-bridge fix`** | 技能目录缺失则补全，否则合并 `skill.json`；登录异常时仅**提示**你执行 `lark-cli auth login` | 技能丢失、清单异常 |
+| **`lark-bridge verify`** | 对 `lark-cli` 跑冒烟（version、help、config、auth、doctor） | 验证 CLI 是否装坏 |
+| **`lark-bridge doctor`** | 输出更详细的环境与诊断信息 | 需要把日志发给别人时 |
+| **`lark-bridge uninstall`** | 移除 CoPaw 技能与清单项；可选卸载全局 `@larksuite/cli` | 不用技能了、想从零再来 |
+
+---
+
+### `lark-cli auth` 子命令全量（清除授权、重新授权在这里）
+
+> 以下均在装好 **`lark-cli`** 后使用；**不是** `lark-bridge` 的子命令。完整列表以 `lark-cli auth --help` 为准。
+
+| 命令 | 一句话 | 典型场景 |
+|------|--------|----------|
+| **`lark-cli auth login`** | 浏览器里完成设备流授权，把用户 token 存本机 | **第一次登录**、**过期后重登**、**补权限**（`--scope` / `--recommend` / `--domain`） |
+| **`lark-cli auth logout`** | **清除本机**保存的用户 token 与已登录用户列表 | **换账号前**、想**彻底退出 CLI 用户登录** |
+| **`lark-cli auth status`** | 看当前 token 是否存在、是否过期（可加 `--verify` 联网验） | 怀疑登录失效 |
+| **`lark-cli auth list`** | 列出本机记录的已登录用户 | 多用户时查看 |
+| **`lark-cli auth scopes`** | 查询**开放平台里**该应用已开通的用户权限 | 对照后台是否开通某 scope |
+| **`lark-cli auth check`** | 检查当前 token 是否包含指定 scope（**必须**带 `--scope "a b"`） | 调用 API 前确认权限 |
+
+**和「飞书 App 里撤销授权」的区别**：`auth logout` 只清**本机文件**里的凭证；若要在飞书账号侧撤销对第三方应用的授权，需在飞书客户端 / 账号安全 / 授权管理或开放平台操作。
+
+**在 CoPaw / Agent 里跑 `auth login` 看不到链接时**：对 **`auth login` 子命令**追加 **`--json`**，授权链接会走 stdout（见技能包内 `references/auth_and_identity.md`）。
+
+---
+
+### 速查表（与上表一致，用人话）
+
+| 命令 | 用人话说 | 我什么时候用它？ |
+|------|----------|------------------|
+| **`lark-bridge setup`** | **一条龙**：检查电脑 → 按需装 Node / 飞书命令行 → 把「会用飞书 CLI」写进 CoPaw | **第一次用**、换电脑、环境乱了想重来一遍 |
+| **`lark-bridge install`** | 和 **`setup` 完全一样**，只是换个名字 | 和 `setup` **二选一**，敲哪个都行 |
+| **`lark-bridge status`** | **体检单**：Python、CoPaw、Node、lark-cli、飞书配置、技能在不在 | **装完想确认**、出问题时先看一眼 |
+| **`lark-bridge update`** | **只更新技能文件**（`lark_cli_bridge` 文件夹），不动你别的设置 | **刚用 pip 升级了本工具**，想拿最新版技能说明 |
+| **`lark-bridge fix`** | **补技能 / 修清单**：技能夹没了就补，有了就合并 `skill.json` | **控制台里找不到技能**、怀疑技能损坏 |
+| **`lark-bridge verify`** | **只测飞书命令行**：装没装好、能不能跑 | **装完 lark-cli 后**自检（不要求已登录飞书） |
+| **`lark-bridge doctor`** | **比 status 更啰嗦**：路径、版本、原始信息都打出来 | **别人帮你排查**时，把输出存成文件发过去 |
+| **`lark-bridge uninstall`** | **卸掉** CoPaw 里的飞书技能；可选把本机全局 `lark-cli` 也卸掉 | **不想用这个技能了**、想干净重装 |
+
+---
+
+### 1）`setup` / `install` — 第一次装、或整环境重来
+
+**干什么：** 检查 Python、CoPaw、Node；没有就提示或帮你装；再装全局 `lark-cli`；最后把 `lark_cli_bridge` 技能拷进 CoPaw 工作区。  
+**什么时候用：** 新手第一次走流程；或你删过技能想再装。
+
+**直接复制（最常用）：**
+
+```bash
+lark-bridge setup
+```
+
+**更多例子（按需复制）：**
+
+```bash
+# 你有多个 CoPaw 工作区，只给其中一个装
+lark-bridge setup --workspace 你的工作区名字
+
+# 给所有工作区都装一份技能
+lark-bridge setup --all-workspaces
+
+# 国内网下 npm 慢，让安装时用国内镜像
+lark-bridge setup --cn
+
+# 你已经自己装好了 lark-cli、也配过飞书，只想更新/覆盖技能文件，少点提问
+lark-bridge setup --skip-lark-check --force -y
+```
+
+**参数是什么意思（看不懂就跳过，只记最上面一行也行）：**
+
+| 参数 | 人话 |
+|------|------|
+| `--workspace <名字>` | 只处理这个名字下面的 CoPaw 工作区 |
+| `--all-workspaces` | 所有工作区都来一遍 |
+| `--cn` | 装 lark-cli 前，先把 npm 镜像切到国内 |
+| `--force` | 技能文件夹已存在也**覆盖**成最新模板 |
+| `--skip-lark-check` | **不检查** Node / lark-cli / 登录，**只部署技能** |
+| `-y` / `--yes` | 尽量少问「是否安装」，适合脚本或老手 |
+
+**它内部大致做什么（放心用就行）：**
 
 ```mermaid
 flowchart TD
     S(["lark-bridge setup"]) --> P["检查 Python 和 CoPaw"]
     P -->|没装 CoPaw| TIP1["提示：pip install copaw"]
     P -->|已有| N["检查 Node.js / npm"]
-    N -->|没装| TIP2["给出安装链接\nWindows/Linux/macOS 各一行"]
-    N -->|已有| L{"lark-cli 装了吗？"}
-    L -->|没装| INST["自动运行\nnpm install -g @larksuite/cli"]
+    N -->|没装| TIP2["告诉你去哪下载 Node"]
+    N -->|已有| L{"电脑上有 lark-cli 吗？"}
+    L -->|没有| INST["尝试 npm 全局安装 @larksuite/cli"]
     INST --> L
-    L -->|装了| C{"飞书应用配好了吗？"}
-    C -->|没配| CONF["打印链接\n等你在浏览器完成后按 Enter"]
+    L -->|有了| C{"飞书应用在本机配好了吗？"}
+    C -->|没有| CONF["提示你执行 lark-cli config init --new\n你在浏览器里配好后按 Enter"]
     CONF --> C
-    C -->|配好了| A{"登录了吗？"}
-    A -->|没登录| LOGIN["打印链接\n等你在浏览器完成后按 Enter"]
+    C -->|好了| A{"登录飞书了吗？"}
+    A -->|没有| LOGIN["提示你执行 lark-cli auth login …\n你在浏览器里登好后按 Enter"]
     LOGIN --> A
-    A -->|已登录| SK["把飞书技能写入 CoPaw 工作区"]
-    SK --> V["自动验证 → 打印成功提示"]
-    V --> DONE(["✅ 完成"])
+    A -->|好了| SK["把 lark_cli_bridge 技能写入 CoPaw"]
+    SK --> DONE(["完成"])
 ```
 
-每一步如果出错，**不会静默跳过**，而是：
-1. 告诉你**哪一步出了问题**
-2. 告诉你**具体原因**
-3. 告诉你**怎么修**（给出可复制的命令或链接）
-4. 你修好后重新跑 `lark-bridge setup`，**已完成的步骤会自动跳过**
+某一步失败会说明原因；你修好后**再跑一次** `lark-bridge setup` 即可。
 
-### fix — 自动修复
+---
+
+### 2）`status` — 看一眼现在正不正常
+
+**干什么：** 打印当前环境、飞书配置是否检测到、技能目录在不在、`skill.json` 里有没有登记。  
+**什么时候用：** 装完想确认；或报错前先扫一眼。
+
+```bash
+lark-bridge status
+```
+
+想看本机有哪些 CoPaw 工作区：
+
+```bash
+lark-bridge status --all-workspaces
+```
+
+---
+
+### 3）`update` — 只更新技能，不重装整套环境
+
+**干什么：** 用**当前安装的 lark-agent-bridge 里自带的**最新 `SKILL.md` 等覆盖工作区里的技能；合并 `skill.json` 时会**尽量保留**你原来给技能配的 `config`。  
+**什么时候用：** 你用 `pip install -U …` 升级了 **lark-agent-bridge** 之后，想让 CoPaw 里的说明文档也跟上。
+
+```bash
+lark-bridge update
+```
+
+指定工作区或全部：
+
+```bash
+lark-bridge update --workspace 你的工作区名字
+lark-bridge update --all-workspaces
+```
+
+---
+
+### 4）`fix` — 技能丢了就补，清单不对就合并
+
+**干什么：**  
+- 若 **`lark_cli_bridge` 文件夹或里面的 `SKILL.md` 没了**，会**重新部署**一份；  
+- 若技能还在，就**合并 `skill.json`**（不瞎删别的技能）。  
+若发现飞书登录可能过期，会在最后**打印一行字**，让你自己去执行 `lark-cli auth login`，**不会自动弹出浏览器**。
+
+**什么时候用：** CoPaw 里看不到飞书技能、或你动过文件怕坏了。
 
 ```bash
 lark-bridge fix
 ```
 
-`fix` 能自动处理的问题：
-
-| 问题 | fix 会做什么 |
-|------|-------------|
-| lark-cli 登录过期 | 自动引导你重新登录 |
-| CoPaw 技能文件损坏或丢失 | 重新写入，保留你的设置 |
-| `skill.json` 格式错误 | 备份原文件后修复 |
-| lark-cli 不在 PATH 中 | 检测实际安装位置并给出修复命令 |
-| npm 全局目录权限问题 | 检测并提示修复方法（不强制 sudo） |
-| Node.js 装了但 npm 找不到 | 检测并提示 |
-
-```text
-$ lark-bridge fix
-
-[诊断] 正在检查所有组件...
-[发现] lark-cli 登录已过期（过期于 2026-04-05）
-  └─ 正在引导重新登录...
-     请在浏览器中打开以下链接：
-     https://open.feishu.cn/open-apis/authen/...
-     完成后按 Enter ▌
-
-[修复] 登录状态 ......... 已修复 ✓
-[检查] 其余组件 ......... 全部正常 ✓
-
-✅ 所有问题已修复！
-```
-
-### uninstall — 干净卸载
+可选（和 `setup` 一样）：
 
 ```bash
-lark-bridge uninstall
+lark-bridge fix --workspace 你的工作区名字
+lark-bridge fix --all-workspaces
+lark-bridge fix -y
 ```
 
-交互式确认，不会误删：
+---
 
-```text
-$ lark-bridge uninstall
+### 5）`verify` — 检查「飞书命令行」装没装坏
 
-即将卸载以下内容：
-  1. CoPaw 中的飞书技能（lark_cli_bridge）
-  2. lark-cli 及其 Agent Skills
-
-以下内容【不会】被删除（需要你手动处理）：
-  · CoPaw 本体
-  · 飞书应用配置（在飞书开放平台上）
-  · lark-bridge 工具本身（用 pip uninstall lark-agent-bridge 卸载）
-
-确认卸载？[y/N] ▌
-
-[卸载] 移除 CoPaw 技能 ................. 完成 ✓
-[卸载] 卸载 lark-cli ................... 完成 ✓
-[卸载] 卸载 lark-cli Agent Skills ...... 完成 ✓
-
-✅ 已干净卸载。如需卸载本工具：
-   pip uninstall lark-agent-bridge
-```
-
-也可以只卸载技能、不卸载 lark-cli：
+**干什么：** 依次跑 `lark-cli --version`、`--help`、`config show`、`auth status`、`doctor`，看 CLI 是否可用。  
+**什么时候用：** 刚装完 `lark-cli`；怀疑 PATH 或安装坏了。**还没配置飞书**时，中间几步可能黄字失败，属正常。
 
 ```bash
-lark-bridge uninstall --skill-only
+lark-bridge verify
 ```
 
-### doctor — 详细诊断报告
+---
+
+### 6）`doctor` — 详细日志，方便别人帮你看
+
+**干什么：** 把版本、路径、检测结果等**多打一些字**（纯文本，没有漂亮表格框）。  
+**什么时候用：** `status` 不够；需要把信息发给别人。
 
 ```bash
 lark-bridge doctor
 ```
 
-比 `status` 更详细，适合排查问题或发给别人帮你看：
+保存成文件：
 
-```text
-$ lark-bridge doctor
-
-╔══════════════════════════════════════════════╗
-║          Lark Agent Bridge 诊断报告          ║
-║          2026-04-06 22:15:03 CST             ║
-╠══════════════════════════════════════════════╣
-║ 操作系统     Windows 10 (10.0.26200) x86_64  ║
-║ Python       3.12.1  /usr/bin/python3        ║
-║ CoPaw        1.0.2b1                         ║
-║ AgentScope   1.0.18                          ║
-║ Node.js      v20.11.0                        ║
-║ npm          10.2.4                          ║
-║ lark-cli     1.0.4                           ║
-╠══════════════════════════════════════════════╣
-║ 飞书应用     已配置  (App ID: cli_a1b2...)   ║
-║ 登录状态     已登录  (过期: 2026-04-13)      ║
-║ 凭证存储     DPAPI + Registry (正常)         ║
-╠══════════════════════════════════════════════╣
-║ CoPaw 根目录  C:\Users\me\.copaw             ║
-║ 工作区        default                        ║
-║ 技能状态      已启用 (channels: all)         ║
-║ skill.json    schema v1, 格式正常            ║
-╠══════════════════════════════════════════════╣
-║ 网络 (npm registry)    可达 ✓                ║
-║ 网络 (open.feishu.cn)  可达 ✓                ║
-╠══════════════════════════════════════════════╣
-║ 结论: 全部正常                               ║
-╚══════════════════════════════════════════════╝
-
-提示: 可将以上内容复制发给他人帮你排查问题
+```bash
+lark-bridge doctor > report.txt
 ```
+
+---
+
+### 7）`uninstall` — 卸技能，可选卸飞书命令行
+
+**干什么：**  
+- 默认：删掉 CoPaw 工作区里的 **`lark_cli_bridge` 文件夹**，并在 `skill.json` 里去掉对应条目；  
+- 可选：再问你要不要 **`npm uninstall -g @larksuite/cli`**（卸掉本机全局 lark-cli）。
+
+**什么时候用：** 不用这个技能了；想从零再跑一遍 `setup`。
+
+**只卸技能、保留 lark-cli（常见）：**
+
+```bash
+lark-bridge uninstall --skill-only
+```
+
+**连技能带全局 lark-cli 一起卸（会多问一句；加 `-y` 全自动）：**
+
+```bash
+lark-bridge uninstall -y
+```
+
+**注意：** 不会删你电脑上的 `~/.lark-cli` 配置文件夹；也不会卸 **pip 里的 lark-agent-bridge**，要卸请自己：`pip uninstall lark-agent-bridge`。
 
 ---
 
 ## 常见问题与解决
 
-> 大多数问题 `lark-bridge fix` 可以自动修复。以下是手动处理的参考。
+> 与**技能文件 / skill.json** 相关可先试 **`lark-bridge fix`**；与 **Node、网络、飞书账号** 相关请看下面各条。
 
 ### Q: 运行 setup 提示「Node.js 未找到」
 
@@ -312,15 +379,36 @@ Windows 一般不会遇到此问题。
 
 ### Q: 飞书登录过期了，CoPaw 里调飞书报错
 
-```bash
-lark-bridge fix
-```
-
-会自动检测到过期并引导你重新登录。或者手动：
+在本机终端执行（或按 `fix` 末尾提示）：
 
 ```bash
 lark-cli auth login --recommend
 ```
+
+`lark-bridge fix` **不会**自动打开浏览器；若 token 异常，只会提示你执行上述命令。
+
+### Q: 想「清除授权」或换账号重新登录（本机 lark-cli）
+
+下面这些命令都是 **`lark-cli auth ...`**，在终端执行；**不是** `lark-bridge` 的子命令（`lark-bridge` 只管 CoPaw 技能与环境）。
+
+| 你想做什么 | 复制这条 |
+|------------|----------|
+| **清掉本机已保存的登录**（用户 token 清掉，相当于退出登录，下次要重新 `auth login`） | `lark-cli auth logout` |
+| **重新授权**（补权限、过期后重登、换账号前可先 `logout` 再登） | `lark-cli auth login --recommend` 或 `lark-cli auth login --scope "缺的权限1 缺的权限2"` |
+| **看一眼现在登没登、token 状态** | `lark-cli auth status`（可加 `--verify` 联网验） |
+| **查当前应用已开通哪些用户权限**（后台配置） | `lark-cli auth scopes` |
+| **查本机已登录用户列表** | `lark-cli auth list` |
+| **检查当前 token 是否包含某权限** | `lark-cli auth check --scope "wiki:wiki:readonly"`（`--scope` 必填，多个用空格） |
+
+**说明（避免误会）：**
+
+- **`auth logout` 只清本机凭证**（你电脑里存的 token / 登录用户列表），**不会**代替你在飞书 App 里「撤销对第三方应用的授权」。若要在飞书侧彻底关掉某应用访问，需要在 **飞书客户端 / 账号安全 / 授权管理** 或 **开放平台** 里按官方入口操作。
+- **重新登录**与 **第一次登录**用的是 **`auth login`**；多次登录可**增量**要权限（scope 会累积，以实际 CLI 行为为准）。
+- 不确定有哪些子命令时：`lark-cli auth --help`。
+
+### Q: 在 CoPaw / Agent 里执行 `auth login`，界面里看不到授权链接
+
+`lark-cli` 默认把链接打在 **stderr**，部分环境只显示 **stdout**。在 **仅针对 `auth login` 子命令** 时追加 **`--json`**，授权信息会在 stdout 以 JSON 输出（`verification_uri_complete` 等）。其它命令仍按惯例使用 `--format json`，不要混用。详见随技能下发的 `references/auth_and_identity.md`。
 
 ### Q: CoPaw 控制台里看不到飞书技能
 
@@ -356,9 +444,13 @@ lark-bridge setup --all-workspaces
 ### Q: 想彻底重来
 
 ```bash
-lark-bridge uninstall        # 清理所有已安装的内容
-lark-bridge setup            # 重新开始
+lark-bridge uninstall        # 移除 CoPaw 技能；可选卸全局 @larksuite/cli
+pip uninstall lark-agent-bridge   # 若也要卸本 Python 工具
+pip install "git+https://github.com/guodaxia103/lark-agent-bridge.git@main"   # 或你的 fork
+lark-bridge setup
 ```
+
+`uninstall` **不会**删除 `~/.lark-cli` 里的应用配置与 token；若要完全清配置，可手动删除该目录（慎用）。
 
 ### Q: fix 也修不好，怎么办？
 
@@ -367,8 +459,6 @@ lark-bridge doctor > report.txt
 ```
 
 把 `report.txt` 的内容发到 GitHub Issues 或社区群里，别人看到完整诊断信息就能帮你。
-
----
 
 ---
 
@@ -382,7 +472,6 @@ lark-bridge doctor > report.txt
 
 若 OpenClaw 最终仓库名或包名与文档不一致，仅在 **`runtimes/openclaw`** 与 README「支持矩阵」中更新，**不改仓库总名**。
 
----
 ---
 
 > **以下为开发者 / 贡献者文档。** 只是使用的话，看上面就够了。
@@ -781,30 +870,26 @@ lark-agent-bridge/
   src/lark_agent_bridge/
     __init__.py
     __main__.py               # python -m lark_agent_bridge
-    cli.py                    # click / argparse 子命令入口
+    cli.py                    # click 子命令入口
+    self_check.py             # lark-bridge verify 冒烟
     core/
       detect.py               # 环境探测（Python/Node/lark-cli/config/auth）
-      install.py              # pip/npm/skills 安装
-      auth_guide.py           # lark-cli config init / auth login 引导
-      network.py              # 网络可达性检测与镜像建议
+      install.py              # pip/npm、npx skills add
     runtimes/
-      base.py                 # 抽象：WorkspaceLocator, ManifestMerger, SkillDeployer
-      copaw.py                # CoPaw 实现（skill.json 合并、目录写入、版本兼容检查）
+      copaw.py                # CoPaw：工作区路径、skill.json 合并、技能目录拷贝
       openclaw.py             # 占位
     manifest/
-      merge.py                # skill.json 安全合并（只追加/更新，不覆盖）
-      schema.py               # schema_version 校验与迁移
-  skills/
-    lark_cli_bridge/
-      SKILL.md                # 核心产物：教 AI 用 lark-cli 的操作手册
-      references/             # 可选：命令速查表、输出示例等供 AI read_file
+      merge.py                # skill.json 安全合并（只追加/更新本技能条目）
+    skills/
+      lark_cli_bridge/
+        SKILL.md
+        references/           # auth、输出格式、领域索引等
   tests/
-    test_detect.py            # lark-cli 状态检测（mock stdout/stderr/exit code）
-    test_manifest_merge.py    # skill.json 合并（字段保留、计数递增、不覆盖其它技能）
-    test_paths.py             # Win/Linux/macOS 路径解析
-    test_skill_scanner.py     # 验证我们的 SKILL.md + references 不触发 CoPaw 高危规则
-  .github/workflows/ci.yml   # windows + ubuntu + macos
-  LICENSE
+    test_manifest_merge.py
+    test_paths.py
+    test_deploy_pipeline.py
+    integration/
+      test_lark_cli_optional.py
 ```
 
 ---

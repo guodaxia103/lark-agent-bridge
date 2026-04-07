@@ -52,7 +52,7 @@ lark-cli doctor
 |------|------|
 | `references/discovery.md` | 如何发现任意子命令、schema、api |
 | `references/domains.md` | 官方 Agent Skills 领域与 `npx skills add` 对应关系 |
-| `references/auth_and_identity.md` | 用户/bot 身份、`--as`、权限与登录 |
+| `references/auth_and_identity.md` | 用户/bot 身份、`--as`、权限与登录；**`auth login` 在 Agent 中请加 `--json`**（stdout 出授权信息） |
 | `references/output_and_errors.md` | JSON、`--jq`、退出码、`_notice` |
 
 若用户已用 `npx skills add larksuite/cli` 安装官方 Skills，那些 Markdown 在**本机 skills 目录**；本包内的 `references` 是精简版，保证在 CoPaw 内可读。
@@ -70,6 +70,10 @@ lark-cli --format json --as user calendar +agenda
 ```
 
 需要 **用户身份** 访问个人日历时，加 `--as user`；仅应用后台资源可用 `--as bot`（见 `references/auth_and_identity.md`）。
+
+### `auth login` only (agents / IDE shell)
+
+When running **`lark-cli auth login`** from an agent or IDE tool, **append `--json`** so the verification URL is on **stdout** as JSON (`verification_uri_complete`, etc.). Default mode prints the link on **stderr**, which many UIs hide from the main “Output”. This applies **only** to `auth login`; do **not** add `--json` to other commands for this reason—other commands keep using `--format json` as usual. Optional two-step: `--no-wait` then `auth login --device-code …`. See `references/auth_and_identity.md`.
 
 ## 写入 / 删除类操作
 
