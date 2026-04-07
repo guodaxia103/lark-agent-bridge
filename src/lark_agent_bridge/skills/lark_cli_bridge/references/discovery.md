@@ -52,3 +52,19 @@ npx skills add larksuite/cli -y -g
 ```
 
 领域列表见同目录 `domains.md`。
+
+## 7. 推荐回退策略（减少版本差异导致的失败）
+
+按下面顺序执行，成功率最高：
+
+1. 先试领域命令：`lark-cli <domain> --help`
+2. 再查 schema（若可用）：`lark-cli schema ...`
+3. 最后用裸 API：`lark-cli api GET/POST /open-apis/...`
+
+示例：
+
+```bash
+lark-cli wiki --help
+# 若没有目标子命令，再退到：
+lark-cli api GET /open-apis/wiki/v2/spaces
+```

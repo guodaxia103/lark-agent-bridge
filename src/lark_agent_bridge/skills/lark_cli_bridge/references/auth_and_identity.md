@@ -21,6 +21,17 @@
 - User：按提示执行 `lark-cli auth login --scope "..."` 或 `--recommend`（见下节 **Agent / IDE** 建议加 `--json`）。
 - Bot：引导用户打开 `console_url` 在后台开通权限。
 
+## 常见任务与 scope 速查（建议先核对）
+
+| 场景 | 常见 scope 示例 | 建议命令 |
+|------|------------------|----------|
+| 读取知识库 / 文档 | `wiki:wiki:readonly` / `space:document:readonly` | `lark-cli auth check --scope "wiki:wiki:readonly"` |
+| 读取日历 | `calendar:calendar:readonly` | `lark-cli auth check --scope "calendar:calendar:readonly"` |
+| 发 IM 消息 | `im:message`（以实际后台命名为准） | `lark-cli auth check --scope "im:message"` |
+| 读取通讯录 | `contact:user.base:readonly` | `lark-cli auth check --scope "contact:user.base:readonly"` |
+
+说明：scope 命名以你租户后台与 `lark-cli auth scopes` 返回为准；上表用于快速定位思路。
+
 ## Agent / IDE 中执行 `auth login`（推荐 `--json`）
 
 **现象**：默认（不加 `--json`）时，授权链接印在 **stderr**，成功后的业务 JSON 也在 **stdout** 很少；许多 IDE / Agent 面板只展示 **stdout**，或等进程结束才合并流，看起来像「很久没有任何输出」。

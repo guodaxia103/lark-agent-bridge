@@ -53,6 +53,19 @@ stderr 常为 JSON envelope：`ok: false`、`error.type`、`error.message`、`hi
 
 解析要点：检查 `error.type` 做分支（`permission_denied` → 引导补权限；`not_found` → 检查参数；`rate_limited` → 等待重试）。
 
+## 标准失败回复模板（给用户）
+
+- 权限不足（user）：
+  - “当前账号缺少权限 `<scope>`。请执行：`lark-cli auth login --scope \"<scope>\" --json`，完成后我再继续执行。”
+- 权限不足（bot / 应用）：
+  - “当前是应用权限不足，请在开放平台开通 `<scope>`。若返回里有 `console_url`，请直接打开该地址操作。”
+- 参数错误：
+  - “命令参数不合法，请确认 `<field>` 格式（例如 ID、时间格式、必填字段）后重试。”
+- 资源不存在：
+  - “未找到目标资源，请确认 `<id/name>` 是否正确，或先执行 list 命令进行检索。”
+- 频控：
+  - “请求过于频繁，我将在稍后重试（建议降低批量并发或拆分请求）。”
+
 ## `auth login` 的输出（例外）
 
 - **默认**：提示语与 **授权链接** 写在 **stderr**；进程会长时间阻塞直到用户完成浏览器授权，此期间 **stdout 可能几乎为空**。若你的环境只显示 stdout，会误以为「没有链接」。

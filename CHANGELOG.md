@@ -2,6 +2,16 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.4] — 2026-04-07
+
+### 技能文档优化
+
+- `SKILL.md` 增加“最短成功路径”与“执行前权限判断（强制）”，降低误用率
+- `SKILL.md` 将 `auth login` 指引统一为中文表达，减少中英混杂
+- `references/auth_and_identity.md` 增加“常见任务与 scope 速查”表
+- `references/discovery.md` 增加“命令发现回退策略”（domain -> schema -> api）
+- `references/output_and_errors.md` 增加“标准失败回复模板”，便于快速给用户可执行反馈
+
 ## [0.3.3] — 2026-04-07
 
 ### 新增
@@ -53,6 +63,7 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.4]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.4
 [0.3.3]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.3
 [0.3.2]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.2
 [0.3.1]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.1
