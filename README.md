@@ -43,10 +43,10 @@ pip install -U lark-agent-bridge
 **备选 A — 按 [版本标签](https://github.com/guodaxia103/lark-agent-bridge/tags) 安装源码 zip**（固定版本，**无需 Git**；与下面命令里的标签名一致即可）：
 
 ```bash
-pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.4.zip"
+pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.5.zip"
 ```
 
-将 `v0.3.4` 换成标签页最新的版本号即可。
+将 `v0.3.5` 换成标签页最新的版本号即可。
 
 **备选 B — 需要本机已安装 Git** — 跟踪 `main` 分支最新开发版：
 
@@ -110,11 +110,13 @@ lark-bridge status
 |------|----------|------------|
 | `lark-bridge setup` | **一条龙**：检查环境 → 装 lark-cli → 部署技能 | 第一次用、重装 |
 | `lark-bridge install` | 和 `setup` 完全一样（别名） | 同上 |
+| `lark-bridge upgrade` | **小白一键升级**：更新技能并给下一步建议 | 工具升级后 |
 | `lark-bridge status` | **体检单**：环境、配置、技能状态 | 确认是否正常 |
 | `lark-bridge update` | **只更新技能文件**，不动你别的设置 | pip 升级本工具后 |
 | `lark-bridge fix` | **补技能 / 修清单** | 技能丢失、清单异常 |
 | `lark-bridge verify` | **测 lark-cli**：装没装好、能不能跑 | 装完 CLI 后自检 |
 | `lark-bridge doctor` | **详细诊断**：比 status 更啰嗦 | 需要把日志发给别人 |
+| `lark-bridge perms sync/show/check` | 权限快照与 scope 检查 | 调飞书前先判权限 |
 | `lark-bridge uninstall` | **卸技能**，可选卸 lark-cli | 不想用了、从零再来 |
 | `lark-bridge cli ...` | **透传**给 lark-cli（与直接敲 `lark-cli ...` 等价） | 只想记一个命令前缀 |
 | `lark-bridge lark ...` | 和 `cli` 完全一样（别名） | 同上 |
@@ -201,6 +203,25 @@ lark-bridge status --all-workspaces   # 列出所有工作区
 lark-bridge update
 lark-bridge update --workspace 你的工作区
 lark-bridge update --all-workspaces
+```
+
+### `upgrade`
+
+面向小白的一键升级入口：更新工作区技能模板，并给出下一步建议（例如继续 `status` 或补登录）。
+
+```bash
+lark-bridge upgrade
+lark-bridge upgrade --with-lark-cli      # 同时尝试升级全局 lark-cli
+```
+
+### `perms sync/show/check`
+
+权限前置检查命令组（建议在调飞书前先跑）：
+
+```bash
+lark-bridge perms sync                     # 写入权限快照
+lark-bridge perms show                     # 查看当前快照
+lark-bridge perms check --scope "wiki:wiki:readonly"
 ```
 
 ### `fix`

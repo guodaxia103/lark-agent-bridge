@@ -2,6 +2,23 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.5] — 2026-04-07
+
+### 新增
+
+- 新增 `lark-bridge upgrade`：面向小白的一键升级入口（更新技能模板并给出下一步建议）
+- 新增 `lark-bridge perms` 命令组：
+  - `perms sync`：生成权限快照
+  - `perms show`：展示权限快照（可选 `--refresh`）
+  - `perms check`：按 scope 检查当前 token 权限并给授权建议
+- `setup` 成功部署后会尝试写入权限快照（失败不阻断）
+- `status` 新增 `--refresh-perms`，并显示权限快照摘要
+
+### 修复
+
+- 统一补齐“升级后下一步”的小白提示，避免只升级包不更新技能/权限认知
+- 补充 `permissions` 与 CLI 新命令测试，降低回归风险
+
 ## [0.3.4] — 2026-04-07
 
 ### 技能文档优化
@@ -63,6 +80,7 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.5]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.5
 [0.3.4]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.4
 [0.3.3]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.3
 [0.3.2]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.2

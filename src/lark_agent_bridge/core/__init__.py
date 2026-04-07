@@ -1,1 +1,1 @@
-"""Environment detection, install helpers, network checks."""
+"""Environment detection, install helpers, permissions, and network checks."""

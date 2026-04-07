@@ -198,3 +198,33 @@ class TestSetupAutoInstallLarkCli:
         assert result.exit_code == 0
         assert "正在自动安装 lark-cli" in result.output
         mock_install_lark.assert_called_once()
+
+
+class TestUpgradeAndPerms:
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.deploy_to_workspace")
+    @patch("lark_agent_bridge.cli.detect.run_full_detect", return_value=_mock_report())
+    def test_upgrade_runs_and_prints_next_step(self, _mock_detect, mock_deploy, mock_resolve, tmp_path):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        mock_deploy.return_value = ws / "skills" / "lark_cli_bridge"
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["upgrade"])
+        assert result.exit_code == 0
+        assert "下一步建议：lark-bridge status" in result.output
+
+    @patch("lark_agent_bridge.cli.detect.which_lark_cli", return_value="/usr/bin/lark-cli")
+    @patch("lark_agent_bridge.cli.permissions.check_scopes", return_value={"wiki:wiki:readonly": False})
+    def test_perms_check_missing_scope_guidance(self, _mock_check, _mock_which):
+        runner = CliRunner()
+        result = runner.invoke(main, ["perms", "check", "--scope", "wiki:wiki:readonly"])
+        assert result.exit_code == 2
+        assert "auth login --scope" in result.output
+
+    @patch("lark_agent_bridge.cli.detect.which_lark_cli", return_value=None)
+    def test_perms_sync_no_lark_cli(self, _mock_which):
+        runner = CliRunner()
+        result = runner.invoke(main, ["perms", "sync"])
+        assert result.exit_code == 1

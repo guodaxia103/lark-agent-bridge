@@ -5,11 +5,12 @@ from __future__ import annotations
 
 import shutil
 import sys
+from pathlib import Path
 
 import click
 
 from lark_agent_bridge import SKILL_DIR_NAME, __version__
-from lark_agent_bridge.core import detect, install
+from lark_agent_bridge.core import detect, install, permissions
 from lark_agent_bridge.manifest.merge import load_manifest
 from lark_agent_bridge.runtimes import copaw as copaw_rt
 from lark_agent_bridge import self_check
@@ -20,6 +21,21 @@ def _print_header(title: str) -> None:
     click.echo()
     click.secho(f"  {title}", fg="cyan", bold=True)
     click.echo()
+
+def _resolve_workspaces_or_exit(workspace: str | None, all_workspaces: bool) -> list:
+    workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
+    if not workspaces:
+        click.secho("未找到 CoPaw 工作区。请确认已运行 copaw init。", fg="red", err=True)
+        raise SystemExit(1)
+    return workspaces
+
+
+def _sync_permissions_for_workspace(ws, lark_cli: str) -> Path | None:
+    try:
+        snap = permissions.build_snapshot(lark_cli)
+        return permissions.write_snapshot(ws, snap)
+    except OSError:
+        return None
 
 
 @click.group(invoke_without_command=True)
@@ -116,6 +132,7 @@ def setup_cmd(
     else:
         _warn("已跳过 Node/npm 与 lark-cli 检测（--skip-lark-check），仅部署技能文件")
 
+    path: str | None = None
     if not skip_lark_check:
         path = detect.which_lark_cli()
         if not path:
@@ -169,6 +186,12 @@ def setup_cmd(
         try:
             copaw_rt.deploy_to_workspace(ws, force=force)
             _ok(f"已写入 {ws / 'skills' / SKILL_DIR_NAME} 与 skill.json")
+            if path and not skip_lark_check:
+                snap_path = _sync_permissions_for_workspace(ws, path)
+                if snap_path:
+                    click.echo(f"  已写入权限快照: {snap_path}")
+                else:
+                    _warn("权限快照写入失败（不影响安装）")
         except OSError as e:
             _err(str(e))
             raise SystemExit(1) from e
@@ -186,7 +209,8 @@ def setup_cmd(
 
 @main.command("status")
 @click.option("--all-workspaces", is_flag=True, help="列出所有工作区路径")
-def status_cmd(all_workspaces: bool) -> None:
+@click.option("--refresh-perms", is_flag=True, help="实时刷新权限快照（会调用 lark-cli auth）")
+def status_cmd(all_workspaces: bool, refresh_perms: bool) -> None:
     """查看环境与技能状态。"""
     report = detect.run_full_detect()
     click.echo(f"Python: {report.python_version}  {'✓' if report.python_ok else '✗'}")
@@ -225,6 +249,23 @@ def status_cmd(all_workspaces: bool) -> None:
     else:
         click.echo(f"技能 {SKILL_DIR_NAME}: 未在 skill.json 中注册")
     click.echo(f"技能目录存在: {skill_dir.exists()} ({skill_dir})")
+    if report.lark_cli_path and refresh_perms:
+        ws = default
+        p = _sync_permissions_for_workspace(ws, report.lark_cli_path)
+        if p:
+            click.echo(f"权限快照: 已刷新 ({p})")
+        else:
+            click.echo("权限快照: 刷新失败")
+    snap = permissions.read_snapshot(default)
+    if snap:
+        summary = snap.get("summary", {})
+        click.echo(
+            "权限快照: "
+            + f"app_scopes={summary.get('app_scope_count', 0)}, "
+            + f"checked_ok={summary.get('checked_ok_count', 0)}/{summary.get('checked_total', 0)}",
+        )
+    else:
+        click.echo("权限快照: 未生成（可运行 `lark-bridge perms sync`）")
 
 
 @main.command("fix")
@@ -261,6 +302,124 @@ def update_cmd(workspace: str | None, all_workspaces: bool) -> None:
     for ws in workspaces:
         copaw_rt.deploy_to_workspace(ws, force=True)
     click.echo("已更新技能模板。")
+
+
+@main.command("upgrade")
+@click.option("--workspace", "-w", default=None)
+@click.option("--all-workspaces", is_flag=True)
+@click.option("--with-lark-cli", is_flag=True, help="同时尝试升级全局 lark-cli")
+@click.option("--cn", is_flag=True, help="升级 lark-cli 时使用国内 npm 镜像")
+def upgrade_cmd(
+    workspace: str | None,
+    all_workspaces: bool,
+    with_lark_cli: bool,
+    cn: bool,
+) -> None:
+    """小白一键升级：更新技能模板并给出下一步。"""
+    _print_header("lark-bridge upgrade")
+    click.echo("建议先执行：pip install -U lark-agent-bridge")
+    if with_lark_cli:
+        click.echo("正在尝试升级全局 lark-cli …")
+        ok, msg = install.npm_install_lark_cli_global(cn_mirror=cn)
+        if ok:
+            click.secho("  [✓] lark-cli 升级流程完成", fg="green")
+        else:
+            click.secho(f"  [!] {msg}", fg="yellow")
+    else:
+        click.echo("如需升级 lark-cli，请执行：npm install -g @larksuite/cli")
+
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces)
+    for ws in workspaces:
+        copaw_rt.deploy_to_workspace(ws, force=True)
+        click.secho(f"  [✓] 已更新工作区技能: {ws}", fg="green")
+
+    report = detect.run_full_detect()
+    if not report.lark_config_ok:
+        click.secho("  [!] 尚未完成飞书应用配置", fg="yellow")
+        click.echo("      请执行：lark-cli config init --new")
+    elif report.lark_auth and not report.lark_auth.token_ok:
+        click.secho("  [!] 尚未完成飞书登录或登录已过期", fg="yellow")
+        click.echo("      请执行：lark-cli auth login --recommend")
+    click.echo("下一步建议：lark-bridge status")
+
+
+@main.group("perms")
+def perms_group() -> None:
+    """权限快照与 scope 检查。"""
+
+
+@perms_group.command("sync")
+@click.option("--workspace", "-w", default=None)
+@click.option("--all-workspaces", is_flag=True)
+@click.option("--as", "actor", type=click.Choice(["user", "bot"]), default="user")
+def perms_sync_cmd(workspace: str | None, all_workspaces: bool, actor: str) -> None:
+    """实时拉取权限并写入工作区快照。"""
+    exe = detect.which_lark_cli()
+    if not exe:
+        click.secho("未找到 lark-cli，请先安装并完成配置登录。", fg="red", err=True)
+        raise SystemExit(1)
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces)
+    for ws in workspaces:
+        snap = permissions.build_snapshot(exe, actor=actor)
+        p = permissions.write_snapshot(ws, snap)
+        click.echo(f"已写入权限快照: {p}")
+        summary = snap.get("summary", {})
+        click.echo(
+            f"  app_scopes={summary.get('app_scope_count', 0)}, "
+            f"checked_ok={summary.get('checked_ok_count', 0)}/{summary.get('checked_total', 0)}",
+        )
+
+
+@perms_group.command("show")
+@click.option("--workspace", "-w", default=None)
+@click.option("--all-workspaces", is_flag=True)
+@click.option("--refresh", is_flag=True, help="读取前先刷新一次快照")
+def perms_show_cmd(workspace: str | None, all_workspaces: bool, refresh: bool) -> None:
+    """展示权限快照。"""
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces)
+    exe = detect.which_lark_cli()
+    for ws in workspaces:
+        if refresh and exe:
+            _sync_permissions_for_workspace(ws, exe)
+        snap = permissions.read_snapshot(ws)
+        if not snap:
+            click.echo(f"{ws}: 未找到权限快照，请先运行 `lark-bridge perms sync`")
+            continue
+        summary = snap.get("summary", {})
+        click.echo(f"{ws}:")
+        click.echo(f"  generated_at: {snap.get('generated_at', '-')}")
+        click.echo(f"  app_scope_count: {summary.get('app_scope_count', 0)}")
+        click.echo(
+            f"  checked_ok: {summary.get('checked_ok_count', 0)}/{summary.get('checked_total', 0)}",
+        )
+        missing = summary.get("checked_missing", [])
+        if missing:
+            click.echo(f"  checked_missing: {missing}")
+
+
+@perms_group.command("check")
+@click.option("--scope", "scopes", multiple=True, required=True, help="要检查的 scope，可重复传")
+@click.option("--as", "actor", type=click.Choice(["user", "bot"]), default="user")
+def perms_check_cmd(scopes: tuple[str, ...], actor: str) -> None:
+    """检查当前 token 是否具备指定 scope。"""
+    exe = detect.which_lark_cli()
+    if not exe:
+        click.secho("未找到 lark-cli，请先安装并完成配置登录。", fg="red", err=True)
+        raise SystemExit(1)
+    check_result = permissions.check_scopes(exe, list(scopes))
+    missing = [k for k, v in check_result.items() if not v]
+    for s in scopes:
+        ok = check_result.get(s, False)
+        mark = "✓" if ok else "✗"
+        click.echo(f"[{mark}] {s}")
+    if missing and actor == "user":
+        scope_join = " ".join(missing)
+        click.secho("\n缺少用户授权 scope。可执行：", fg="yellow")
+        click.echo(f"  lark-cli auth login --scope \"{scope_join}\" --json")
+    elif missing and actor == "bot":
+        click.secho("\n缺少应用权限，请在开放平台开通相应 scope。", fg="yellow")
+    if missing:
+        raise SystemExit(2)
 
 
 @main.command("uninstall")
