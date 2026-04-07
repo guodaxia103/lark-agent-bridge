@@ -13,6 +13,7 @@ from lark_agent_bridge.core import detect, install
 from lark_agent_bridge.manifest.merge import load_manifest
 from lark_agent_bridge.runtimes import copaw as copaw_rt
 from lark_agent_bridge import self_check
+from lark_agent_bridge import cli_forward
 
 
 def _print_header(title: str) -> None:
@@ -334,6 +335,46 @@ def verify_cmd() -> None:
             fg="yellow",
         )
     click.secho("\nCLI 本体可用；请在完成飞书配置后于 CoPaw 中试用。", fg="green")
+
+
+def _cli_passthrough_run() -> None:
+    """Shared body for `cli` / `lark` passthrough subcommands."""
+    exe = detect.which_lark_cli()
+    if not exe:
+        click.secho(
+            "未找到 lark-cli。请先: npm install -g @larksuite/cli，或运行 lark-bridge setup",
+            fg="red",
+            err=True,
+        )
+        raise SystemExit(127)
+    code = cli_forward.run_lark_cli_forward(exe, sys.argv)
+    raise SystemExit(code)
+
+
+@main.command(
+    "cli",
+    add_help_option=False,
+    context_settings=dict(
+        ignore_unknown_options=True,
+        allow_extra_args=True,
+        help_option_names=[],
+    ),
+)
+@click.pass_context
+def cli_passthrough_cmd(ctx: click.Context) -> None:
+    """原样转发给本机 lark-cli：后面接的内容与直接运行 lark-cli 相同。
+
+    例：lark-bridge cli auth login --recommend
+        lark-bridge cli wiki spaces list --page-all
+
+    等价于：lark-cli …（仅多写一层前缀，便于只记 lark-bridge 一个入口）。
+    """
+    _ = ctx  # 保留 pass_context 以便 Click 把未知参数放进 ctx.args
+    _cli_passthrough_run()
+
+
+# 与 `cli` 相同，便于记忆「lark」前缀
+main.add_command(cli_passthrough_cmd, name="lark")
 
 
 # README 中的 install 与 setup 对齐

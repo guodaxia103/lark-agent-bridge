@@ -71,6 +71,10 @@ lark-cli --format json --as user calendar +agenda
 
 需要 **用户身份** 访问个人日历时，加 `--as user`；仅应用后台资源可用 `--as bot`（见 `references/auth_and_identity.md`）。
 
+### 统一入口 `lark-bridge cli`（可选）
+
+若本机已安装 **lark-agent-bridge**，可用 **`lark-bridge cli`**（或 **`lark-bridge lark`**）把后续参数**原样**交给 `lark-cli`，与直接执行 `lark-cli …` **等价**（透传，非另一套 API）。示例：`lark-bridge cli wiki spaces list --page-all`、`lark-bridge cli auth login --recommend --json`。用户想「只记一个前缀」时可推荐此写法。
+
 ### `auth login` only (agents / IDE shell)
 
 When running **`lark-cli auth login`** from an agent or IDE tool, **append `--json`** so the verification URL is on **stdout** as JSON (`verification_uri_complete`, etc.). Default mode prints the link on **stderr**, which many UIs hide from the main “Output”. This applies **only** to `auth login`; do **not** add `--json` to other commands for this reason—other commands keep using `--format json` as usual. Optional two-step: `--no-wait` then `auth login --device-code …`. See `references/auth_and_identity.md`.

@@ -116,14 +116,25 @@ lark-bridge --help
 
 顶层还有：`lark-bridge --version`。
 
-### 两套命令别混了
+### 两套命令别混了（可用「统一入口」减少记两套）
 
 | 你在终端里敲的 | 是谁 | 干什么 |
 |----------------|------|--------|
 | **`lark-bridge …`** | 本仓库提供的工具 | 检查环境、把 **`lark_cli_bridge` 技能**写入 CoPaw、卸载技能等 |
 | **`lark-cli …`** | 飞书官方命令行（`setup` 会帮你装） | 调飞书 API、**登录/退出登录/查权限**等 |
 
-下面分别给出 **子命令全量表**（与 `lark-bridge --help` / `lark-cli auth --help` 一致）；**清除授权、重新授权**在第二张表（`lark-cli auth`），不在 `lark-bridge` 里。
+**想只记一个前缀时**：在 `lark-bridge` 后面加 **`cli`**（或 **`lark`**），再接原来 `lark-cli` 的**全部**子命令与参数，**效果与直接运行 `lark-cli` 相同**（本机透传，不做二次封装）：
+
+```bash
+lark-bridge cli --version
+lark-bridge cli auth login --recommend
+lark-bridge cli auth logout
+lark-bridge lark wiki spaces list --page-all
+```
+
+上面与 `lark-cli --version`、`lark-cli auth login --recommend` 等**等价**；`cli` 与 `lark` 两个名字**完全一样**，任选一个记即可。
+
+下面分别给出 **`lark-bridge` 自有子命令全量表**（含 `cli`/`lark`），以及 **`lark-cli auth`** 子命令表（清除/重新授权在表里）；也可直接 `lark-bridge cli auth --help` 查看飞书侧帮助。
 
 ---
 
@@ -133,6 +144,8 @@ lark-bridge --help
 |------|--------|----------|
 | **`lark-bridge setup`** | 一键检查环境 → 按需装 `lark-cli` → 部署技能到 CoPaw | 第一次用、重装 |
 | **`lark-bridge install`** | 与 **`setup` 完全相同**（别名，二选一） | 同上 |
+| **`lark-bridge cli`** | **透传**：后面整段交给本机 `lark-cli`（与直接敲 `lark-cli` 等价） | **想只记 `lark-bridge` 一个入口**时调飞书 |
+| **`lark-bridge lark`** | 与 **`cli` 完全相同**（别名，二选一） | 同上，好记 |
 | **`lark-bridge status`** | 打印 Python / CoPaw / Node / lark-cli / 飞书配置 / 技能是否在 | 自检、排错前先看 |
 | **`lark-bridge update`** | 用当前 bridge 自带的技能模板覆盖工作区技能，保留 `skill.json` 里已有 `config` | pip 升级本工具后同步技能 |
 | **`lark-bridge fix`** | 技能目录缺失则补全，否则合并 `skill.json`；登录异常时仅**提示**你执行 `lark-cli auth login` | 技能丢失、清单异常 |
@@ -167,6 +180,7 @@ lark-bridge --help
 |------|----------|------------------|
 | **`lark-bridge setup`** | **一条龙**：检查电脑 → 按需装 Node / 飞书命令行 → 把「会用飞书 CLI」写进 CoPaw | **第一次用**、换电脑、环境乱了想重来一遍 |
 | **`lark-bridge install`** | 和 **`setup` 完全一样**，只是换个名字 | 和 `setup` **二选一**，敲哪个都行 |
+| **`lark-bridge cli`** / **`lark`** | 后面接的内容**原样交给 `lark-cli`**（透传），等价于自己敲 `lark-cli …` | **只想记一个命令前缀**时调飞书 |
 | **`lark-bridge status`** | **体检单**：Python、CoPaw、Node、lark-cli、飞书配置、技能在不在 | **装完想确认**、出问题时先看一眼 |
 | **`lark-bridge update`** | **只更新技能文件**（`lark_cli_bridge` 文件夹），不动你别的设置 | **刚用 pip 升级了本工具**，想拿最新版技能说明 |
 | **`lark-bridge fix`** | **补技能 / 修清单**：技能夹没了就补，有了就合并 `skill.json` | **控制台里找不到技能**、怀疑技能损坏 |
