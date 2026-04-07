@@ -2,6 +2,13 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.1] — 2026-04-07
+
+### 修复
+
+- GitHub Actions 的 PyPI 发布流程改为 `twine + API Token`，避免 OIDC 权限导致的失败
+- 文档中的安装示例与标签版本更新为 `v0.3.1`
+
 ## [0.3.0] — 2026-04-07
 
 ### 新增
@@ -21,4 +28,5 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.1]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.1
 [0.3.0]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.0
