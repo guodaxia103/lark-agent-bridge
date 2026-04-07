@@ -30,6 +30,7 @@ dependencies = [
 Homepage = "https://github.com/guodaxia103/lark-agent-bridge"
 Repository = "https://github.com/guodaxia103/lark-agent-bridge"
 Issues = "https://github.com/guodaxia103/lark-agent-bridge/issues"
+Changelog = "https://github.com/guodaxia103/lark-agent-bridge/blob/main/CHANGELOG.md"
 
 [project.optional-dependencies]
 dev = [

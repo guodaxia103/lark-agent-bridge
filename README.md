@@ -1,5 +1,8 @@
 # Lark Agent Bridge
 
+[![PyPI](https://img.shields.io/pypi/v/lark-agent-bridge.svg)](https://pypi.org/project/lark-agent-bridge/)
+[![CI](https://github.com/guodaxia103/lark-agent-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/guodaxia103/lark-agent-bridge/actions)
+
 让你的 **CoPaw** 学会用**飞书命令行**帮你办事 —— 不改任何开源项目代码。
 
 **Windows · Linux · macOS** 通用 | 当前支持 **CoPaw**
@@ -23,16 +26,37 @@
 
 ### 第 1 步：安装本工具
 
-任选一种：
+**推荐（无需 Git）** — 从 [PyPI](https://pypi.org/project/lark-agent-bridge/) 安装已发布的 wheel：
 
 ```bash
-# A. 从 GitHub 安装（推荐，无需先克隆）
-pip install "git+https://github.com/guodaxia103/lark-agent-bridge.git@main"
-
-# B. 从 PyPI 安装（发布后可用）
 pip install lark-agent-bridge
+```
 
-# C. 克隆源码后本地安装（开发者）
+升级本工具：
+
+```bash
+pip install -U lark-agent-bridge
+```
+
+若 PyPI 上暂时搜不到包（例如维护者尚未完成首次上传），可用下面两种方式之一，**同样不需要安装 Git**：
+
+**备选 A — 按 [GitHub Release](https://github.com/guodaxia103/lark-agent-bridge/releases) 标签安装源码包**（固定版本，与发布说明中的版本号一致）：
+
+```bash
+pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.0.zip"
+```
+
+将 `v0.3.0` 换成 Releases 页上最新的标签名即可。
+
+**备选 B — 需要本机已安装 Git** — 跟踪 `main` 分支最新开发版：
+
+```bash
+pip install "git+https://github.com/guodaxia103/lark-agent-bridge.git@main"
+```
+
+**开发者** — 克隆后可编辑安装：
+
+```bash
 git clone https://github.com/guodaxia103/lark-agent-bridge.git
 cd lark-agent-bridge
 pip install -e ".[dev]"
@@ -300,10 +324,10 @@ Windows 上可能有多个 Python。确认用的是 CoPaw 对应的那个：
 
 ```bash
 python --version          # 确认版本
-python -m pip install "git+https://github.com/guodaxia103/lark-agent-bridge.git@main"
+python -m pip install lark-agent-bridge
 ```
 
-用 `python -m pip` 而不是直接 `pip`，可以确保装到正确的 Python 环境。
+用 `python -m pip` 而不是直接 `pip`，可以确保装到正确的 Python 环境。若需固定版本，可把 `lark-agent-bridge` 换成上一节「备选 A」里的 GitHub zip 地址。
 
 ### Q: setup 报「工作区不存在」
 
@@ -329,7 +353,7 @@ lark-bridge setup --all-workspaces              # 全部装
 ```bash
 lark-bridge uninstall        # 移除 CoPaw 技能；可选卸全局 lark-cli
 pip uninstall lark-agent-bridge
-pip install "git+https://github.com/guodaxia103/lark-agent-bridge.git@main"
+pip install lark-agent-bridge
 lark-bridge setup
 ```
 

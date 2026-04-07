@@ -308,6 +308,25 @@ lark-agent-bridge/
 - 测试：`pip install -e ".[dev]"` → `pytest tests/ -q`
 - 集成测试在无 `lark-cli` 时自动 skip
 
+### PyPI 与 GitHub Release
+
+1. 在 `pyproject.toml` 与 `src/lark_agent_bridge/__init__.py` 中 bump 版本号，更新 [CHANGELOG.md](CHANGELOG.md)。
+2. 提交并推送 `main`。
+3. 打标签并推送（触发 [`.github/workflows/publish-pypi.yml`](.github/workflows/publish-pypi.yml) 构建并上传 PyPI）：
+   ```bash
+   git tag -a v0.3.0 -m "v0.3.0"
+   git push origin v0.3.0
+   ```
+4. 在 GitHub 上 **Releases → Draft a new release**，选择该标签，填写说明后发布（用户可下载 Source zip / 用 README 中的 zip 安装命令）。
+5. **首次上传 PyPI**：在仓库 **Settings → Secrets → Actions** 中配置 `PYPI_API_TOKEN`（[PyPI API token](https://pypi.org/manage/account/token/)）。推送标签后工作流会自动上传；若未配置 secret，工作流会失败，可在配置后 **Re-run failed jobs**。
+6. **本地手动上传**（可选）：
+   ```bash
+   pip install build twine
+   python -m build
+   python -m twine upload dist/*
+   ```
+   使用用户名 `__token__`，密码为 API token。
+
 ---
 
 ## 12. 风险与边界
