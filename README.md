@@ -4,13 +4,23 @@
 
 **Windows · Linux · macOS** 通用 | 当前优先支持 **CoPaw**
 
+### 产品边界（请先读）
+
+| 本工具做什么 | 本工具**不**做什么 |
+|--------------|-------------------|
+| 通过 `pip` 安装 **lark-agent-bridge** 这个**小工具** | **不**替你安装 **CoPaw**（用户一般已装好并用过 `copaw init`） |
+| 向 **已有** CoPaw 工作区写入 **`lark_cli_bridge` 技能** + 合并 `skill.json` | **不**替代你在飞书开放平台的应用创建与 OAuth |
+| 可选：协助安装 **lark-cli**（Node/npm）、跑 `verify` 冒烟 | **不**在自动化里对你租户调用「全部飞书 API」（需账号与权限） |
+
+默认 `lark-bridge setup`：**若检测不到 `copaw` Python 包，会直接报错退出**，并提示你先自行安装 CoPaw；只有显式传入 **`--install-copaw-if-missing`** 才会尝试 `pip install copaw`（不推荐作为常规路径）。
+
 ### 交付范围与测试说明
 
 | 目标 | 说明 |
 |------|------|
 | **安装** | 支持 `pip install git+https://github.com/guodaxia103/lark-agent-bridge.git@main` 与本仓库 `pip install -e .` |
 | **CoPaw 技能** | `lark_cli_bridge` 含 `SKILL.md` + `references/`（发现命令、`api` 裸调、身份说明、官方 20 域索引），覆盖 **lark-cli 全能力路径**（快捷命令 → 注册 API → `lark-cli api`） |
-| **自动化测试** | `pytest`：清单合并、路径；**集成**：若 PATH 上有 `lark-cli` 则跑 `--version`/`--help` 冒烟 |
+| **自动化测试** | `pytest`：清单合并、路径、**模拟 CoPaw 工作区目录的完整 deploy**（验证 SKILL 与 `skill.json`，不启动 CoPaw 进程）；**集成**：若 PATH 上有 `lark-cli` 则跑 CLI 冒烟 |
 | **人工验收** | 飞书 **config / OAuth** 须在浏览器完成；具体业务 API（如发消息、改表格）依赖租户权限，**无法在通用 CI 中全部调用**，请本地执行 `lark-bridge verify` 并在 CoPaw 对话中试真实任务 |
 
 ---

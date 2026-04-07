@@ -49,6 +49,11 @@ def main(ctx: click.Context) -> None:
     is_flag=True,
     help="跳过 lark-cli 安装与登录检测，仅部署技能（你已自行配置好 lark-cli）",
 )
+@click.option(
+    "--install-copaw-if-missing",
+    is_flag=True,
+    help="极少用：未检测到 copaw 包时尝试 pip install（默认不安装，请用户自备 CoPaw）",
+)
 def setup_cmd(
     workspace: str | None,
     all_workspaces: bool,
@@ -56,8 +61,9 @@ def setup_cmd(
     assume_yes: bool,
     force: bool,
     skip_lark_check: bool,
+    install_copaw_if_missing: bool,
 ) -> None:
-    """一键检查环境、安装 lark-cli（可选）、并把技能写入 CoPaw 工作区。"""
+    """检查环境、按需安装 lark-cli，并把技能写入「已存在」的 CoPaw 工作区（不替你安装 CoPaw，除非你显式传参）。"""
     _print_header("lark-bridge setup")
 
     report = detect.run_full_detect()
@@ -80,10 +86,17 @@ def setup_cmd(
 
     copaw_ok, copaw_ver = detect.pip_show_copaw()
     if copaw_ok:
-        _ok(f"CoPaw 包已安装 ({copaw_ver or '?'})")
+        _ok(f"CoPaw 包已检测到 ({copaw_ver or '?'})")
     else:
-        _warn("未检测到 copaw（pip show copaw）")
-        if assume_yes or click.confirm("是否现在执行 pip install -U copaw？", default=True):
+        _err("未检测到 CoPaw（pip show copaw）。请先自行安装并初始化 CoPaw，再运行 lark-bridge。")
+        click.echo(
+            "  示例：pip install copaw  &&  copaw init --defaults",
+            err=True,
+        )
+        if install_copaw_if_missing and (
+            assume_yes
+            or click.confirm("是否尝试 pip install -U copaw？（不推荐，除非你清楚自己在做什么）", default=False)
+        ):
             ok, msg = install.pip_install_copaw_upgrade()
             if ok:
                 _ok("pip install -U copaw 完成")
