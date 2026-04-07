@@ -79,6 +79,14 @@ lark-cli doctor
 - **User 场景**：提示并给 `auth login` 命令（建议 `--json` 以便返回链接）
 - **Bot 场景**：提示去开放平台开通权限（优先返回 `console_url`）
 
+如本机安装了 `lark-agent-bridge`，可优先使用权限快照命令加速判断：
+
+```bash
+lark-bridge perms sync
+lark-bridge perms show
+lark-bridge perms check --scope "wiki:wiki:readonly"
+```
+
 ## 执行方式
 
 使用 **`execute_shell_command`**，**一条命令一行**（避免无关的 `&&` / `|`）。默认加 `--format json` 便于解析：

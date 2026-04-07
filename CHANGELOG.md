@@ -2,6 +2,12 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.6] — 2026-04-07
+
+### 修订
+
+- `SKILL.md` 补充 `lark-bridge perms sync/show/check` 用法提示，明确可结合权限快照加速执行前判权
+
 ## [0.3.5] — 2026-04-07
 
 ### 新增
@@ -80,6 +86,7 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.6]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.6
 [0.3.5]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.5
 [0.3.4]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.4
 [0.3.3]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.3

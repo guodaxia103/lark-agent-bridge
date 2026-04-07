@@ -43,10 +43,10 @@ pip install -U lark-agent-bridge
 **备选 A — 按 [版本标签](https://github.com/guodaxia103/lark-agent-bridge/tags) 安装源码 zip**（固定版本，**无需 Git**；与下面命令里的标签名一致即可）：
 
 ```bash
-pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.5.zip"
+pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.6.zip"
 ```
 
-将 `v0.3.5` 换成标签页最新的版本号即可。
+将 `v0.3.6` 换成标签页最新的版本号即可。
 
 **备选 B — 需要本机已安装 Git** — 跟踪 `main` 分支最新开发版：
 
