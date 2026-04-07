@@ -32,7 +32,7 @@ lark-cli schema --help
 lark-cli schema some.service.method --format pretty
 ```
 
-用于查看某 API 方法的参数结构（具体可用名称以本机 `--help` 为准）。
+用于查看某 API 方法的参数结构（具体可用名称以本机 `--help` 为准）。不是所有版本都包含 schema，执行前先 `lark-cli schema --help` 确认可用。
 
 ## 5. 裸 HTTP：覆盖「CLI 未封装」的任意 OpenAPI
 

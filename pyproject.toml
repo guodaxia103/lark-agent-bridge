@@ -4,15 +4,32 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lark-agent-bridge"
-version = "0.2.2"
+version = "0.3.0"
 description = "Bridge CoPaw (and future runtimes) with larksuite/lark-cli for Feishu/Lark automation."
 readme = "README.md"
 requires-python = ">=3.10"
-license = { text = "MIT" }
+license = "MIT"
 authors = [{ name = "Lark Agent Bridge contributors" }]
+keywords = ["feishu", "lark", "copaw", "agent", "cli", "bridge"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Libraries",
+]
 dependencies = [
   "click>=8.0,<9",
 ]
+
+[project.urls]
+Homepage = "https://github.com/guodaxia103/lark-agent-bridge"
+Repository = "https://github.com/guodaxia103/lark-agent-bridge"
+Issues = "https://github.com/guodaxia103/lark-agent-bridge/issues"
 
 [project.optional-dependencies]
 dev = [

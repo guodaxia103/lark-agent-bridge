@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from lark_agent_bridge import SKILL_DIR_NAME
+from lark_agent_bridge import SKILL_DIR_NAME, __version__
 
 SCHEMA = "workspace-skill-manifest.v1"
 
@@ -78,7 +78,7 @@ def merge_lark_bridge_entry(
     meta = {
         "name": SKILL_DIR_NAME,
         "description": "通过本机 lark-cli（飞书官方 CLI）操作飞书；与内置飞书通道并行。",
-        "version_text": "0.2.1",
+        "version_text": __version__,
         "commit_text": "",
         "signature": "",
         "source": "customized",

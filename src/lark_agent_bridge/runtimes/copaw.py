@@ -34,11 +34,13 @@ def deploy_to_workspace(
     skills_root.mkdir(parents=True, exist_ok=True)
     dest = skills_root / SKILL_DIR_NAME
 
-    if dest.exists() and force:
-        shutil.rmtree(dest)
+    if dest.exists() and not force:
+        pass  # keep existing skill files; only refresh manifest below
     elif dest.exists():
         shutil.rmtree(dest)
-    shutil.copytree(src, dest)
+        shutil.copytree(src, dest)
+    else:
+        shutil.copytree(src, dest)
 
     manifest_path = workspace_dir / "skill.json"
     data = load_manifest(manifest_path)

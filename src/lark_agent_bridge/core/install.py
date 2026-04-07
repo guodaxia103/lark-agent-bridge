@@ -60,13 +60,10 @@ def npm_install_lark_cli_global(*, cn_mirror: bool = False) -> tuple[bool, str]:
     if not cands:
         return False, "npm 未找到"
     npm = cands[0]
+    install_cmd = [npm, "install", "-g", "@larksuite/cli"]
     if cn_mirror:
-        subprocess.run(
-            [npm, "config", "set", "registry", "https://registry.npmmirror.com"],
-            check=False,
-            timeout=60,
-        )
-    code = run_stream([npm, "install", "-g", "@larksuite/cli"])
+        install_cmd += ["--registry", "https://registry.npmmirror.com"]
+    code = run_stream(install_cmd)
     if code != 0:
         return False, f"npm install -g @larksuite/cli 失败 (exit {code})"
     npx = _npx_executable()

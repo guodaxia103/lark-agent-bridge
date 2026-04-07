@@ -4,7 +4,8 @@ description: "Full access to the official Feishu/Lark CLI (lark-cli) on this mac
 metadata:
   copaw:
     emoji: "🪶"
-    requires: {}
+    requires:
+      bins: ["lark-cli"]
 ---
 
 # Lark CLI Bridge（飞书官方 CLI 全能力）

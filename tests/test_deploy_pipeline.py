@@ -42,6 +42,49 @@ def test_deploy_creates_skill_tree_and_manifest(tmp_path, monkeypatch):
     assert "other" in data["skills"]
 
 
+def test_deploy_force_false_preserves_existing_files(tmp_path):
+    """force=False should keep existing skill files and only refresh manifest."""
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True)
+
+    skills_dir = ws / "skills" / SKILL_DIR_NAME
+    skills_dir.mkdir(parents=True)
+    marker = skills_dir / "CUSTOM_FILE.txt"
+    marker.write_text("user customization", encoding="utf-8")
+    (skills_dir / "SKILL.md").write_text("old content", encoding="utf-8")
+
+    deploy_to_workspace(ws, force=False)
+
+    assert marker.exists(), "force=False should not delete existing files"
+    assert marker.read_text(encoding="utf-8") == "user customization"
+
+    data = load_manifest(ws / "skill.json")
+    assert SKILL_DIR_NAME in data["skills"]
+    assert data["skills"][SKILL_DIR_NAME]["enabled"] is True
+
+
+def test_deploy_force_true_replaces_skill_dir(tmp_path):
+    """force=True should replace the entire skill directory with bundled content."""
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True)
+
+    skills_dir = ws / "skills" / SKILL_DIR_NAME
+    skills_dir.mkdir(parents=True)
+    marker = skills_dir / "CUSTOM_FILE.txt"
+    marker.write_text("should be removed", encoding="utf-8")
+    (skills_dir / "SKILL.md").write_text("old", encoding="utf-8")
+
+    deploy_to_workspace(ws, force=True)
+
+    assert not marker.exists(), "force=True should remove old custom files"
+    assert (skills_dir / "SKILL.md").is_file()
+    content = (skills_dir / "SKILL.md").read_text(encoding="utf-8")
+    assert "old" not in content or "lark_cli_bridge" in content
+
+    data = load_manifest(ws / "skill.json")
+    assert SKILL_DIR_NAME in data["skills"]
+
+
 def test_copaw_workspace_resolve_respects_env(tmp_path, monkeypatch):
     from lark_agent_bridge.core.detect import copaw_working_dir, resolve_workspace
 
