@@ -3,11 +3,30 @@
 [![PyPI](https://img.shields.io/pypi/v/lark-agent-bridge.svg)](https://pypi.org/project/lark-agent-bridge/)
 [![CI](https://github.com/guodaxia103/lark-agent-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/guodaxia103/lark-agent-bridge/actions)
 
-**一键把飞书官方 `lark-cli` 接到 CoPaw。**
-
 一键把飞书官方 `lark-cli` 接到 CoPaw：自动检查安装、续跑授权、权限快照、可回滚。
 
 **Windows · Linux · macOS** 通用 | 当前支持 **CoPaw**
+
+---
+
+## 支持哪些飞书能力
+
+接入后，CoPaw 可通过本机 `lark-cli` 调用飞书官方能力（以你本机 `lark-cli --help` 为准），常见场景包括：
+
+| 领域 | 常用命令 | 典型能力 |
+|------|----------|----------|
+| 协作办公 | `docs` / `drive` / `sheets` / `base` / `wiki` | 云文档、云空间、电子表格、多维表格、知识库 |
+| 沟通与日程 | `im` / `calendar` / `vc` / `minutes` / `mail` | 即时消息、日程忙闲、视频会议、会议纪要、邮件 |
+| 组织与流程 | `contact` / `task` / `approval` / `event` | 通讯录、任务、审批、事件订阅 |
+| 扩展与高级 | `whiteboard` / `api` / `config` / `auth` | 白板、原生 OpenAPI 调用、应用配置、授权与权限检查 |
+
+调用方式建议按三层走：快捷命令 → 已注册 API 命令 → 原生 `lark-cli api`。
+
+本项目只负责“桥接与治理”（安装检查、续跑、判权、回滚），不替代 `lark-cli` 本身能力。
+
+能力与领域映射参考官方文档（随上游版本更新）：
+- [larksuite/cli README.zh.md](https://github.com/larksuite/cli/blob/main/README.zh.md)
+- `skills/lark_cli_bridge/references/domains.md`
 
 ---
 
@@ -45,10 +64,10 @@ pip install -U lark-agent-bridge
 **备选 A — 按 [版本标签](https://github.com/guodaxia103/lark-agent-bridge/tags) 安装源码 zip**（固定版本，**无需 Git**；与下面命令里的标签名一致即可）：
 
 ```bash
-pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.6.zip"
+pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.7.zip"
 ```
 
-将 `v0.3.6` 换成标签页最新的版本号即可。
+将 `v0.3.7` 换成标签页最新的版本号即可。
 
 **备选 B — 需要本机已安装 Git** — 跟踪 `main` 分支最新开发版：
 
