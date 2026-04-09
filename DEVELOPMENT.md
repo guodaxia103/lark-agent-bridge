@@ -299,6 +299,9 @@ lark-agent-bridge/
 
 版本策略：`pyproject.toml` 中声明 tested 版本；每次上游发版后在 CI 中验证。
 
+错误码规范见 [docs/error-codes.md](docs/error-codes.md)。
+备份目录默认保留最近 10 份，可通过 `update/upgrade/uninstall --backup-keep` 或 `backups cleanup --keep` 调整。
+
 ---
 
 ## 11. CI
@@ -308,14 +311,22 @@ lark-agent-bridge/
 - 测试：`pip install -e ".[dev]"` → `pytest tests/ -q`
 - 集成测试在无 `lark-cli` 时自动 skip
 
+Nightly 工作流（`.github/workflows/nightly-e2e.yml`）：
+- Ubuntu + Python 3.12 + Node 20
+- 安装全局 `@larksuite/cli`
+- 执行 `tests/integration/test_lark_cli_optional.py` smoke
+
+发布前门禁与回归清单见 [docs/release-gate.md](docs/release-gate.md)。
+V1 两周 backlog 见 [docs/v1-delivery-backlog.md](docs/v1-delivery-backlog.md)。
+
 ### PyPI 与 GitHub Release
 
 1. 在 `pyproject.toml` 与 `src/lark_agent_bridge/__init__.py` 中 bump 版本号，更新 [CHANGELOG.md](CHANGELOG.md)。
 2. 提交并推送 `main`。
 3. 打标签并推送（触发 [`.github/workflows/publish-pypi.yml`](.github/workflows/publish-pypi.yml) 构建并上传 PyPI）：
    ```bash
-   git tag -a v0.3.6 -m "v0.3.6"
-   git push origin v0.3.6
+   git tag -a v0.3.7 -m "v0.3.7"
+   git push origin v0.3.7
    ```
 4. 在 GitHub 上 **Releases → Draft a new release**，选择该标签，填写说明后发布（用户可下载 Source zip / 用 README 中的 zip 安装命令）。
 5. **首次上传 PyPI**：在仓库 **Settings → Secrets → Actions** 中配置 `PYPI_API_TOKEN`（[PyPI API token](https://pypi.org/manage/account/token/)）。推送标签后工作流会自动上传；若未配置 secret，工作流会失败，可在配置后 **Re-run failed jobs**。

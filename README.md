@@ -3,6 +3,8 @@
 [![PyPI](https://img.shields.io/pypi/v/lark-agent-bridge.svg)](https://pypi.org/project/lark-agent-bridge/)
 [![CI](https://github.com/guodaxia103/lark-agent-bridge/actions/workflows/ci.yml/badge.svg)](https://github.com/guodaxia103/lark-agent-bridge/actions)
 
+**一键把飞书官方 `lark-cli` 接到 CoPaw。**
+
 让你的 **CoPaw** 学会用**飞书命令行**帮你办事 —— 不改任何开源项目代码。
 
 **Windows · Linux · macOS** 通用 | 当前支持 **CoPaw**
@@ -87,7 +89,7 @@ lark-cli auth login --recommend   # 在浏览器里登录飞书授权
 浏览器操作完成后，请重新执行：
 
 ```bash
-lark-bridge setup --skip-lark-check
+lark-bridge resume
 ```
 
 ### 第 4 步：在 CoPaw 中启用技能
@@ -111,8 +113,11 @@ lark-bridge status
 | `lark-bridge setup` | **一条龙**：检查环境 → 装 lark-cli → 部署技能 | 第一次用、重装 |
 | `lark-bridge install` | 和 `setup` 完全一样（别名） | 同上 |
 | `lark-bridge upgrade` | **小白一键升级**：更新技能并给下一步建议 | 工具升级后 |
+| `lark-bridge resume` | **续跑安装**：完成浏览器授权后继续部署 | setup 中断后 |
 | `lark-bridge status` | **体检单**：环境、配置、技能状态 | 确认是否正常 |
-| `lark-bridge update` | **只更新技能文件**，不动你别的设置 | pip 升级本工具后 |
+| `lark-bridge update` | **更新技能文件**（自动备份，可回滚） | pip 升级本工具后 |
+| `lark-bridge rollback` | **回滚到备份**（默认最近一次） | 误更新、误卸载后恢复 |
+| `lark-bridge backups list/cleanup` | **查看/清理备份**（保留最近 N 份） | 备份太多、需要手动整理 |
 | `lark-bridge fix` | **补技能 / 修清单** | 技能丢失、清单异常 |
 | `lark-bridge verify` | **测 lark-cli**：装没装好、能不能跑 | 装完 CLI 后自检 |
 | `lark-bridge doctor` | **详细诊断**：比 status 更啰嗦 | 需要把日志发给别人 |
@@ -192,26 +197,60 @@ flowchart TD
 
 ```bash
 lark-bridge status
+lark-bridge status --workspace 你的工作区
 lark-bridge status --all-workspaces   # 列出所有工作区
 ```
 
 ### `update`
 
-用当前安装的 lark-agent-bridge 自带的最新技能模板覆盖工作区，保留 `skill.json` 里已有的 `config`。
+用当前安装的 lark-agent-bridge 自带的最新技能模板覆盖工作区，保留 `skill.json` 里已有的 `config`。执行前会自动创建备份。
 
 ```bash
 lark-bridge update
 lark-bridge update --workspace 你的工作区
 lark-bridge update --all-workspaces
+lark-bridge update --backup-keep 20
+lark-bridge rollback --workspace 你的工作区 --backup-id latest
 ```
 
 ### `upgrade`
 
 面向小白的一键升级入口：更新工作区技能模板，并给出下一步建议（例如继续 `status` 或补登录）。
+执行前会自动创建备份，可用 `rollback` 恢复。
 
 ```bash
 lark-bridge upgrade
 lark-bridge upgrade --with-lark-cli      # 同时尝试升级全局 lark-cli
+lark-bridge upgrade --backup-keep 20
+```
+
+### `resume`
+
+在 `setup` 因为配置/登录未完成而中断后，浏览器操作结束即可继续部署。
+
+```bash
+lark-bridge resume
+lark-bridge resume --workspace 你的工作区
+```
+
+### `rollback`
+
+将技能目录与 `skill.json` 恢复到备份状态（默认最近一次）。
+
+```bash
+lark-bridge rollback --workspace 你的工作区
+lark-bridge rollback --workspace 你的工作区 --backup-id latest
+lark-bridge rollback --all-workspaces
+```
+
+### `backups list/cleanup`
+
+查看或清理工作区备份。`cleanup` 会删除旧备份，仅保留最近 N 份。
+
+```bash
+lark-bridge backups list --workspace 你的工作区
+lark-bridge backups cleanup --workspace 你的工作区 --keep 10
+lark-bridge backups cleanup --all-workspaces --keep 10
 ```
 
 ### `perms sync/show/check`
@@ -259,9 +298,11 @@ lark-bridge doctor > report.txt
 lark-bridge uninstall --skill-only    # 只卸技能
 lark-bridge uninstall --skill-only --purge-lark-cli-config   # 额外清理 ~/.lark-cli 配置与登录凭证
 lark-bridge uninstall -y              # 连 lark-cli 一起卸
+lark-bridge uninstall --backup-keep 20
 ```
 
 默认不会删 `~/.lark-cli` 配置文件夹；仅当显式传 `--purge-lark-cli-config`（或交互中选择清理）时才会删除。也不会卸 pip 里的 lark-agent-bridge（需自行 `pip uninstall lark-agent-bridge`）。
+如需查看错误码说明，见 [docs/error-codes.md](docs/error-codes.md)。
 
 ---
 

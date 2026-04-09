@@ -3,8 +3,6 @@
 
 from __future__ import annotations
 
-import json
-from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
@@ -40,12 +38,17 @@ class TestVersion:
 
 
 class TestStatus:
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
     @patch("lark_agent_bridge.cli.detect.run_full_detect", return_value=_mock_report())
-    def test_status_prints_environment(self, mock_detect):
+    def test_status_prints_environment(self, mock_detect, mock_resolve, tmp_path):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
         runner = CliRunner()
         result = runner.invoke(main, ["status"])
         assert result.exit_code == 0
         assert "Python" in result.output
+        assert "[workspace]" in result.output
 
 
 class TestDoctor:
@@ -99,11 +102,13 @@ class TestFix:
 
 class TestUninstall:
     @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.create_workspace_backup")
     @patch("lark_agent_bridge.cli.copaw_rt.undeploy_from_workspace")
-    def test_uninstall_skill_only(self, mock_undeploy, mock_resolve, tmp_path):
+    def test_uninstall_skill_only(self, mock_undeploy, mock_backup, mock_resolve, tmp_path):
         ws = tmp_path / "workspaces" / "default"
         ws.mkdir(parents=True)
         mock_resolve.return_value = [ws]
+        mock_backup.return_value = ws / ".lark-bridge-backups" / "latest"
 
         runner = CliRunner()
         result = runner.invoke(main, ["uninstall", "--skill-only", "-y"])
@@ -111,18 +116,21 @@ class TestUninstall:
         mock_undeploy.assert_called_once()
 
     @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.create_workspace_backup")
     @patch("lark_agent_bridge.cli.copaw_rt.undeploy_from_workspace")
     @patch("lark_agent_bridge.cli.detect.lark_cli_config_dir")
     def test_uninstall_purge_lark_cli_config(
         self,
         mock_cfg_dir,
         mock_undeploy,
+        mock_backup,
         mock_resolve,
         tmp_path,
     ):
         ws = tmp_path / "workspaces" / "default"
         ws.mkdir(parents=True)
         mock_resolve.return_value = [ws]
+        mock_backup.return_value = ws / ".lark-bridge-backups" / "latest"
 
         cfg = tmp_path / ".lark-cli"
         cfg.mkdir(parents=True)
@@ -161,7 +169,7 @@ class TestSetupInteractiveGuidance:
         result = runner.invoke(main, ["setup", "-y"])
         assert result.exit_code == 2
         assert "lark-cli config init --new" in result.output
-        assert "lark-bridge setup --skip-lark-check" in result.output
+        assert "lark-bridge resume" in result.output
 
 
 class TestSetupAutoInstallLarkCli:
@@ -202,12 +210,21 @@ class TestSetupAutoInstallLarkCli:
 
 class TestUpgradeAndPerms:
     @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.create_workspace_backup")
     @patch("lark_agent_bridge.cli.copaw_rt.deploy_to_workspace")
     @patch("lark_agent_bridge.cli.detect.run_full_detect", return_value=_mock_report())
-    def test_upgrade_runs_and_prints_next_step(self, _mock_detect, mock_deploy, mock_resolve, tmp_path):
+    def test_upgrade_runs_and_prints_next_step(
+        self,
+        _mock_detect,
+        mock_deploy,
+        mock_backup,
+        mock_resolve,
+        tmp_path,
+    ):
         ws = tmp_path / "workspaces" / "default"
         ws.mkdir(parents=True)
         mock_resolve.return_value = [ws]
+        mock_backup.return_value = ws / ".lark-bridge-backups" / "latest"
         mock_deploy.return_value = ws / "skills" / "lark_cli_bridge"
 
         runner = CliRunner()
@@ -228,3 +245,61 @@ class TestUpgradeAndPerms:
         runner = CliRunner()
         result = runner.invoke(main, ["perms", "sync"])
         assert result.exit_code == 1
+
+
+class TestResumeAndRollback:
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.deploy_to_workspace")
+    @patch("lark_agent_bridge.cli.detect.run_full_detect", return_value=_mock_report())
+    def test_resume_deploys_workspace(self, _mock_detect, mock_deploy, mock_resolve, tmp_path):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        mock_deploy.return_value = ws / "skills" / "lark_cli_bridge"
+        runner = CliRunner()
+        result = runner.invoke(main, ["resume"])
+        assert result.exit_code == 0
+        assert "下一步建议：lark-bridge status" in result.output
+
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.list_workspace_backups")
+    @patch("lark_agent_bridge.cli.copaw_rt.restore_workspace_backup")
+    def test_rollback_uses_latest_backup(self, mock_restore, mock_list, mock_resolve, tmp_path):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        backup = ws / ".lark-bridge-backups" / "20260101T000000Z-update"
+        backup.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        mock_list.return_value = [backup]
+        runner = CliRunner()
+        result = runner.invoke(main, ["rollback"])
+        assert result.exit_code == 0
+        mock_restore.assert_called_once()
+
+
+class TestBackupsCommands:
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.list_workspace_backups")
+    def test_backups_list(self, mock_list, mock_resolve, tmp_path):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        b = ws / ".lark-bridge-backups" / "20260101T000000Z-update"
+        b.mkdir(parents=True)
+        mock_list.return_value = [b]
+        runner = CliRunner()
+        result = runner.invoke(main, ["backups", "list"])
+        assert result.exit_code == 0
+        assert "20260101T000000Z-update" in result.output
+
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.prune_workspace_backups")
+    def test_backups_cleanup(self, mock_prune, mock_resolve, tmp_path):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        mock_prune.return_value = [ws / "a", ws / "b"]
+        runner = CliRunner()
+        result = runner.invoke(main, ["backups", "cleanup", "--keep", "3"])
+        assert result.exit_code == 0
+        assert "已删除 2 份旧备份" in result.output

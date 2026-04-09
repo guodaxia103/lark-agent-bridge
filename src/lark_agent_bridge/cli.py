@@ -10,6 +10,7 @@ from pathlib import Path
 import click
 
 from lark_agent_bridge import SKILL_DIR_NAME, __version__
+from lark_agent_bridge.core import exit_codes
 from lark_agent_bridge.core import detect, install, permissions
 from lark_agent_bridge.manifest.merge import load_manifest
 from lark_agent_bridge.runtimes import copaw as copaw_rt
@@ -22,11 +23,60 @@ def _print_header(title: str) -> None:
     click.secho(f"  {title}", fg="cyan", bold=True)
     click.echo()
 
-def _resolve_workspaces_or_exit(workspace: str | None, all_workspaces: bool) -> list:
+
+def _fail_with_guidance(
+    reason: str,
+    *,
+    commands: list[str] | None = None,
+    checks: list[str] | None = None,
+    exit_code: int = exit_codes.E_FAILED,
+    error_code: str | None = None,
+) -> None:
+    click.echo()
+    prefix = "  [×]"
+    if error_code:
+        prefix += f"[{error_code}]"
+    click.secho(f"{prefix} {reason}", fg="red", err=True)
+    if commands:
+        click.secho("  建议执行：", fg="yellow")
+        for cmd in commands:
+            click.echo(click.style(f"    {cmd}", fg="bright_white"))
+    if checks:
+        click.secho("  建议检查：", fg="yellow")
+        for item in checks:
+            click.echo(f"    - {item}")
+    raise SystemExit(exit_code)
+
+
+def _resolve_workspaces_or_exit(
+    workspace: str | None,
+    all_workspaces: bool,
+    *,
+    action: str = "执行操作",
+) -> list[Path]:
+    if workspace and all_workspaces:
+        _fail_with_guidance(
+            f"{action}失败：不能同时使用 --workspace 和 --all-workspaces。",
+            commands=[
+                "lark-bridge status --workspace <工作区名>",
+                "lark-bridge status --all-workspaces",
+            ],
+            error_code="LAB-CLI-001",
+        )
     workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
     if not workspaces:
-        click.secho("未找到 CoPaw 工作区。请确认已运行 copaw init。", fg="red", err=True)
-        raise SystemExit(1)
+        _fail_with_guidance(
+            f"{action}失败：未找到 CoPaw 工作区。",
+            commands=[
+                "copaw init",
+                "lark-bridge status --all-workspaces",
+            ],
+            checks=[
+                "确认 ~/.copaw/workspaces 下存在至少一个工作区目录",
+                "若使用了自定义路径，请检查 COPAW_WORKING_DIR 环境变量",
+            ],
+            error_code="LAB-CLI-002",
+        )
     return workspaces
 
 
@@ -36,6 +86,31 @@ def _sync_permissions_for_workspace(ws, lark_cli: str) -> Path | None:
         return permissions.write_snapshot(ws, snap)
     except OSError:
         return None
+
+
+def _resume_command(workspace: str | None, all_workspaces: bool, *, force: bool) -> str:
+    parts = ["lark-bridge", "resume"]
+    if workspace:
+        parts += ["--workspace", workspace]
+    if all_workspaces:
+        parts.append("--all-workspaces")
+    if force:
+        parts.append("--force")
+    return " ".join(parts)
+
+
+def _create_backup_or_fail(ws: Path, *, reason: str, keep_last: int) -> Path:
+    try:
+        return copaw_rt.create_workspace_backup(ws, reason=reason, keep_last=keep_last)
+    except OSError as e:
+        _fail_with_guidance(
+            f"创建备份失败: {e}",
+            commands=[
+                f"lark-bridge backups list --workspace {ws.name}",
+                f"lark-bridge backups cleanup --workspace {ws.name} --keep {keep_last}",
+            ],
+            error_code="LAB-BACKUP-001",
+        )
 
 
 @click.group(invoke_without_command=True)
@@ -91,15 +166,15 @@ def setup_cmd(
     def _warn(msg: str) -> None:
         click.secho(f"  [!] {msg}", fg="yellow")
 
-    def _err(msg: str) -> None:
-        click.secho(f"  [×] {msg}", fg="red")
-
     py_ok, py_ver = detect.python_info()
     if py_ok:
         _ok(f"Python {py_ver}")
     else:
-        _err(f"Python 版本过低: {py_ver}，需要 >= 3.10")
-        raise SystemExit(1)
+        _fail_with_guidance(
+            f"Python 版本过低: {py_ver}，需要 >= 3.10。",
+            checks=["运行 `python --version` 确认当前终端使用的 Python", "升级到 Python 3.10+ 后重新执行 setup"],
+            error_code="LAB-SETUP-001",
+        )
 
     copaw_ok, copaw_ver = detect.pip_show_copaw()
     if copaw_ok:
@@ -111,10 +186,17 @@ def setup_cmd(
             if ok:
                 _ok("pip install -U copaw 完成")
             else:
-                _err(msg)
-                raise SystemExit(1)
+                _fail_with_guidance(
+                    msg,
+                    commands=["python -m pip install -U copaw", "lark-bridge setup"],
+                    error_code="LAB-SETUP-002",
+                )
         else:
-            raise SystemExit(1)
+            _fail_with_guidance(
+                "用户取消了 copaw 安装，setup 已停止。",
+                commands=["python -m pip install -U copaw", "lark-bridge setup"],
+                error_code="LAB-SETUP-002",
+            )
 
     if not skip_lark_check:
         node_ok, node_ver = detect.which_node()
@@ -122,13 +204,24 @@ def setup_cmd(
         if node_ok:
             _ok(f"Node.js v{node_ver}")
         else:
-            _err("未找到 Node.js。请先安装: https://nodejs.org/ （Windows 可用 winget install OpenJS.NodeJS.LTS）")
-            raise SystemExit(1)
+            _fail_with_guidance(
+                "未找到 Node.js。",
+                commands=[
+                    "winget install OpenJS.NodeJS.LTS",
+                    "lark-bridge setup",
+                ],
+                checks=["安装完成后请重新打开终端再执行命令"],
+                error_code="LAB-SETUP-002",
+            )
         if npm_ok:
             _ok(f"npm {npm_ver}")
         else:
-            _err("未找到 npm")
-            raise SystemExit(1)
+            _fail_with_guidance(
+                "未找到 npm。",
+                commands=["node --version", "npm --version", "lark-bridge setup"],
+                checks=["确认 Node.js 安装完整且 npm 在 PATH 中"],
+                error_code="LAB-SETUP-002",
+            )
     else:
         _warn("已跳过 Node/npm 与 lark-cli 检测（--skip-lark-check），仅部署技能文件")
 
@@ -138,21 +231,37 @@ def setup_cmd(
         if not path:
             _warn("未找到 lark-cli")
             if no_install_lark_cli:
-                _err("已设置 --no-install-lark-cli，且当前缺少 lark-cli，无法继续")
-                raise SystemExit(1)
+                _fail_with_guidance(
+                    "已设置 --no-install-lark-cli，且当前缺少 lark-cli，无法继续。",
+                    commands=[
+                        "npm install -g @larksuite/cli",
+                        "lark-bridge setup",
+                    ],
+                    error_code="LAB-SETUP-002",
+                )
             click.echo("  正在自动安装 lark-cli（npm install -g @larksuite/cli）…")
             ok, msg = install.npm_install_lark_cli_global(cn_mirror=cn)
             if ok:
                 _ok("lark-cli 安装流程完成")
             else:
-                _err(msg)
-                raise SystemExit(1)
+                _fail_with_guidance(
+                    msg,
+                    commands=[
+                        "npm install -g @larksuite/cli",
+                        "lark-bridge setup --cn",
+                    ],
+                    checks=["确认 npm 全局安装权限和网络连通性"],
+                    error_code="LAB-SETUP-002",
+                )
             report = detect.run_full_detect()
 
         path = detect.which_lark_cli()
         if not path:
-            _err("安装后仍未找到 lark-cli，请确认 npm 全局 bin 在 PATH 中")
-            raise SystemExit(1)
+            _fail_with_guidance(
+                "安装后仍未找到 lark-cli，请确认 npm 全局 bin 在 PATH 中。",
+                commands=["npm bin -g", "lark-cli --version", "lark-bridge setup"],
+                error_code="LAB-SETUP-002",
+            )
         _ok(f"lark-cli: {path}")
 
         report = detect.run_full_detect()
@@ -161,9 +270,16 @@ def setup_cmd(
             click.echo("  请先在终端执行（将打开浏览器完成配置）：")
             click.echo(click.style("    lark-cli config init --new", fg="bright_white"))
             click.echo("  完成后再运行：")
-            click.echo(click.style("    lark-bridge setup --skip-lark-check", fg="bright_white"))
-            _err("当前未完成配置，已停止本次 setup（避免误按 Enter 导致假继续）")
-            raise SystemExit(2)
+            click.echo(click.style(f"    {_resume_command(workspace, all_workspaces, force=force)}", fg="bright_white"))
+            _fail_with_guidance(
+                "当前未完成配置，已停止本次 setup。",
+                commands=[
+                    "lark-cli config init --new",
+                    _resume_command(workspace, all_workspaces, force=force),
+                ],
+                exit_code=exit_codes.E_ACTION_REQUIRED,
+                error_code="LAB-SETUP-003",
+            )
 
         report = detect.run_full_detect()
         if report.lark_auth and not report.lark_auth.token_ok:
@@ -171,14 +287,18 @@ def setup_cmd(
             click.echo("  请先在终端执行：")
             click.echo(click.style("    lark-cli auth login --recommend", fg="bright_white"))
             click.echo("  完成后再运行：")
-            click.echo(click.style("    lark-bridge setup --skip-lark-check", fg="bright_white"))
-            _err("当前未完成登录，已停止本次 setup（避免误按 Enter 导致假继续）")
-            raise SystemExit(2)
+            click.echo(click.style(f"    {_resume_command(workspace, all_workspaces, force=force)}", fg="bright_white"))
+            _fail_with_guidance(
+                "当前未完成登录，已停止本次 setup。",
+                commands=[
+                    "lark-cli auth login --recommend",
+                    _resume_command(workspace, all_workspaces, force=force),
+                ],
+                exit_code=exit_codes.E_ACTION_REQUIRED,
+                error_code="LAB-SETUP-004",
+            )
 
-    workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
-    if not workspaces:
-        _err("未找到 CoPaw 工作区。请确认已运行 copaw init，且存在 ~/.copaw/workspaces/default")
-        raise SystemExit(1)
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="setup")
 
     for ws in workspaces:
         click.echo()
@@ -193,8 +313,11 @@ def setup_cmd(
                 else:
                     _warn("权限快照写入失败（不影响安装）")
         except OSError as e:
-            _err(str(e))
-            raise SystemExit(1) from e
+            _fail_with_guidance(
+                f"写入工作区失败: {e}",
+                commands=["lark-bridge doctor", "lark-bridge fix"],
+                error_code="LAB-DEPLOY-001",
+            )
 
     click.echo()
     click.secho(
@@ -207,10 +330,61 @@ def setup_cmd(
     click.echo()
 
 
+@main.command("resume")
+@click.option("--workspace", "-w", default=None, help="CoPaw 工作区目录名，默认 default")
+@click.option("--all-workspaces", is_flag=True, help="对所有工作区继续部署")
+@click.option("--force", is_flag=True, help="覆盖已存在的技能目录并重新写入")
+def resume_cmd(workspace: str | None, all_workspaces: bool, force: bool) -> None:
+    """在浏览器完成 config/auth 后继续部署技能。"""
+    _print_header("lark-bridge resume")
+    report = detect.run_full_detect()
+    if not report.lark_cli_path:
+        _fail_with_guidance(
+            "未找到 lark-cli，无法继续。",
+            commands=["npm install -g @larksuite/cli", "lark-bridge setup"],
+            error_code="LAB-SETUP-002",
+        )
+    if not report.lark_config_ok:
+        _fail_with_guidance(
+            "尚未完成 lark-cli 应用配置。",
+            commands=["lark-cli config init --new", _resume_command(workspace, all_workspaces, force=force)],
+            exit_code=exit_codes.E_ACTION_REQUIRED,
+            error_code="LAB-SETUP-003",
+        )
+    if not report.lark_auth or not report.lark_auth.token_ok:
+        _fail_with_guidance(
+            "尚未完成 lark-cli 登录或登录已过期。",
+            commands=["lark-cli auth login --recommend", _resume_command(workspace, all_workspaces, force=force)],
+            exit_code=exit_codes.E_ACTION_REQUIRED,
+            error_code="LAB-SETUP-004",
+        )
+
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="resume")
+    for ws in workspaces:
+        click.secho(f"  继续部署工作区: {ws}", fg="magenta")
+        try:
+            copaw_rt.deploy_to_workspace(ws, force=force)
+            snap_path = _sync_permissions_for_workspace(ws, report.lark_cli_path)
+            click.secho(f"  [✓] 已更新技能: {ws / 'skills' / SKILL_DIR_NAME}", fg="green")
+            if snap_path:
+                click.echo(f"  已刷新权限快照: {snap_path}")
+        except OSError as e:
+            _fail_with_guidance(
+                f"继续部署失败: {e}",
+                commands=["lark-bridge doctor", "lark-bridge fix"],
+                error_code="LAB-DEPLOY-001",
+            )
+
+    click.echo()
+    click.secho("  完成。下一步建议：lark-bridge status", fg="green", bold=True)
+    click.echo()
+
+
 @main.command("status")
-@click.option("--all-workspaces", is_flag=True, help="列出所有工作区路径")
+@click.option("--workspace", "-w", default=None, help="只查看指定工作区")
+@click.option("--all-workspaces", is_flag=True, help="列出并检查所有工作区")
 @click.option("--refresh-perms", is_flag=True, help="实时刷新权限快照（会调用 lark-cli auth）")
-def status_cmd(all_workspaces: bool, refresh_perms: bool) -> None:
+def status_cmd(workspace: str | None, all_workspaces: bool, refresh_perms: bool) -> None:
     """查看环境与技能状态。"""
     report = detect.run_full_detect()
     click.echo(f"Python: {report.python_version}  {'✓' if report.python_ok else '✗'}")
@@ -234,38 +408,38 @@ def status_cmd(all_workspaces: bool, refresh_perms: bool) -> None:
         click.echo(
             f"登录状态: {'正常' if report.lark_auth.token_ok else '需重新登录'}",
         )
-    ws_list = detect.list_copaw_workspaces()
-    if all_workspaces:
-        for p in ws_list:
-            click.echo(f"  工作区: {p.name} -> {p}")
-    default = detect.copaw_working_dir() / "workspaces" / "default"
-    skill_dir = default / "skills" / SKILL_DIR_NAME
-    manifest = load_manifest(default / "skill.json")
-    ent = manifest.get("skills", {}).get(SKILL_DIR_NAME)
-    if ent:
-        click.echo(
-            f"技能 {SKILL_DIR_NAME}: enabled={ent.get('enabled')} channels={ent.get('channels')}",
-        )
-    else:
-        click.echo(f"技能 {SKILL_DIR_NAME}: 未在 skill.json 中注册")
-    click.echo(f"技能目录存在: {skill_dir.exists()} ({skill_dir})")
-    if report.lark_cli_path and refresh_perms:
-        ws = default
-        p = _sync_permissions_for_workspace(ws, report.lark_cli_path)
-        if p:
-            click.echo(f"权限快照: 已刷新 ({p})")
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="status")
+    click.echo()
+    for ws in workspaces:
+        click.secho(f"[workspace] {ws.name}", fg="cyan")
+        click.echo(f"  path: {ws}")
+        skill_dir = ws / "skills" / SKILL_DIR_NAME
+        manifest = load_manifest(ws / "skill.json")
+        ent = manifest.get("skills", {}).get(SKILL_DIR_NAME)
+        if ent:
+            click.echo(
+                f"  技能注册: enabled={ent.get('enabled')} channels={ent.get('channels')}",
+            )
         else:
-            click.echo("权限快照: 刷新失败")
-    snap = permissions.read_snapshot(default)
-    if snap:
-        summary = snap.get("summary", {})
-        click.echo(
-            "权限快照: "
-            + f"app_scopes={summary.get('app_scope_count', 0)}, "
-            + f"checked_ok={summary.get('checked_ok_count', 0)}/{summary.get('checked_total', 0)}",
-        )
-    else:
-        click.echo("权限快照: 未生成（可运行 `lark-bridge perms sync`）")
+            click.echo(f"  技能注册: 未在 skill.json 中注册 {SKILL_DIR_NAME}")
+        click.echo(f"  技能目录: {'存在' if skill_dir.exists() else '缺失'} ({skill_dir})")
+        if report.lark_cli_path and refresh_perms:
+            p = _sync_permissions_for_workspace(ws, report.lark_cli_path)
+            if p:
+                click.echo(f"  权限快照: 已刷新 ({p})")
+            else:
+                click.echo("  权限快照: 刷新失败")
+        snap = permissions.read_snapshot(ws)
+        if snap:
+            summary = snap.get("summary", {})
+            click.echo(
+                "  权限快照: "
+                + f"app_scopes={summary.get('app_scope_count', 0)}, "
+                + f"checked_ok={summary.get('checked_ok_count', 0)}/{summary.get('checked_total', 0)}",
+            )
+        else:
+            click.echo("  权限快照: 未生成（可运行 `lark-bridge perms sync`）")
+        click.echo()
 
 
 @main.command("fix")
@@ -274,10 +448,8 @@ def status_cmd(all_workspaces: bool, refresh_perms: bool) -> None:
 @click.option("-y", "--yes", "assume_yes", is_flag=True)
 def fix_cmd(workspace: str | None, all_workspaces: bool, assume_yes: bool) -> None:
     """尝试修复：补全技能文件、合并 skill.json。"""
-    workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
-    if not workspaces:
-        click.echo("未找到工作区", err=True)
-        raise SystemExit(1)
+    _ = assume_yes
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="fix")
     for ws in workspaces:
         skill_dir = ws / "skills" / SKILL_DIR_NAME
         if not skill_dir.is_dir() or not (skill_dir / "SKILL.md").exists():
@@ -294,14 +466,108 @@ def fix_cmd(workspace: str | None, all_workspaces: bool, assume_yes: bool) -> No
 @main.command("update")
 @click.option("--workspace", "-w", default=None)
 @click.option("--all-workspaces", is_flag=True)
-def update_cmd(workspace: str | None, all_workspaces: bool) -> None:
+@click.option(
+    "--backup-keep",
+    type=click.IntRange(1, 200),
+    default=copaw_rt.DEFAULT_BACKUP_KEEP,
+    show_default=True,
+    help="每个工作区最多保留多少份最近备份",
+)
+def update_cmd(workspace: str | None, all_workspaces: bool, backup_keep: int) -> None:
     """更新技能文件（merge 时会保留 skill.json 中已有 config）。"""
-    workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
-    if not workspaces:
-        raise SystemExit(1)
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="update")
     for ws in workspaces:
-        copaw_rt.deploy_to_workspace(ws, force=True)
-    click.echo("已更新技能模板。")
+        backup = _create_backup_or_fail(ws, reason="update", keep_last=backup_keep)
+        click.echo(f"已创建备份: {backup.name}")
+        try:
+            copaw_rt.deploy_to_workspace(ws, force=True)
+            click.echo(f"已更新技能模板: {ws}")
+        except OSError as e:
+            _fail_with_guidance(
+                f"更新失败: {e}",
+                commands=[f"lark-bridge rollback --workspace {ws.name} --backup-id {backup.name}"],
+                error_code="LAB-DEPLOY-001",
+            )
+
+
+@main.command("rollback")
+@click.option("--workspace", "-w", default=None, help="回滚指定工作区")
+@click.option("--all-workspaces", is_flag=True, help="回滚所有工作区")
+@click.option(
+    "--backup-id",
+    default="latest",
+    help="备份目录名，默认 latest 表示最近一次备份",
+)
+def rollback_cmd(workspace: str | None, all_workspaces: bool, backup_id: str) -> None:
+    """将工作区恢复到最近一次（或指定）备份。"""
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="rollback")
+    for ws in workspaces:
+        if backup_id == "latest":
+            backups = copaw_rt.list_workspace_backups(ws)
+            if not backups:
+                _fail_with_guidance(
+                    f"工作区 {ws.name} 没有可用备份。",
+                    commands=[f"lark-bridge update --workspace {ws.name}"],
+                    error_code="LAB-BACKUP-002",
+                )
+            chosen = backups[0]
+        else:
+            chosen = copaw_rt.backups_root(ws) / backup_id
+            if not chosen.is_dir():
+                _fail_with_guidance(
+                    f"未找到备份: {chosen}",
+                    commands=[f"lark-bridge rollback --workspace {ws.name} --backup-id latest"],
+                    error_code="LAB-BACKUP-002",
+                )
+        try:
+            copaw_rt.restore_workspace_backup(ws, chosen)
+        except OSError as e:
+            _fail_with_guidance(
+                f"恢复备份失败: {e}",
+                commands=[f"lark-bridge backups list --workspace {ws.name}"],
+                error_code="LAB-BACKUP-001",
+            )
+        click.secho(f"[✓] 已回滚 {ws.name} <- {chosen.name}", fg="green")
+
+
+@main.group("backups")
+def backups_group() -> None:
+    """备份管理（列表、清理）。"""
+
+
+@backups_group.command("list")
+@click.option("--workspace", "-w", default=None, help="查看指定工作区")
+@click.option("--all-workspaces", is_flag=True, help="查看所有工作区")
+def backups_list_cmd(workspace: str | None, all_workspaces: bool) -> None:
+    """列出工作区备份。"""
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="backups list")
+    for ws in workspaces:
+        click.secho(f"[workspace] {ws.name}", fg="cyan")
+        backups = copaw_rt.list_workspace_backups(ws)
+        if not backups:
+            click.echo("  (无备份)")
+            continue
+        for p in backups:
+            click.echo(f"  - {p.name}")
+        click.echo()
+
+
+@backups_group.command("cleanup")
+@click.option("--workspace", "-w", default=None, help="清理指定工作区")
+@click.option("--all-workspaces", is_flag=True, help="清理所有工作区")
+@click.option(
+    "--keep",
+    type=click.IntRange(1, 200),
+    default=copaw_rt.DEFAULT_BACKUP_KEEP,
+    show_default=True,
+    help="保留最近多少份备份",
+)
+def backups_cleanup_cmd(workspace: str | None, all_workspaces: bool, keep: int) -> None:
+    """清理旧备份，仅保留最近 N 份。"""
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="backups cleanup")
+    for ws in workspaces:
+        removed = copaw_rt.prune_workspace_backups(ws, keep_last=keep)
+        click.echo(f"{ws.name}: 已删除 {len(removed)} 份旧备份，保留最近 {keep} 份")
 
 
 @main.command("upgrade")
@@ -309,11 +575,19 @@ def update_cmd(workspace: str | None, all_workspaces: bool) -> None:
 @click.option("--all-workspaces", is_flag=True)
 @click.option("--with-lark-cli", is_flag=True, help="同时尝试升级全局 lark-cli")
 @click.option("--cn", is_flag=True, help="升级 lark-cli 时使用国内 npm 镜像")
+@click.option(
+    "--backup-keep",
+    type=click.IntRange(1, 200),
+    default=copaw_rt.DEFAULT_BACKUP_KEEP,
+    show_default=True,
+    help="每个工作区最多保留多少份最近备份",
+)
 def upgrade_cmd(
     workspace: str | None,
     all_workspaces: bool,
     with_lark_cli: bool,
     cn: bool,
+    backup_keep: int,
 ) -> None:
     """小白一键升级：更新技能模板并给出下一步。"""
     _print_header("lark-bridge upgrade")
@@ -324,14 +598,28 @@ def upgrade_cmd(
         if ok:
             click.secho("  [✓] lark-cli 升级流程完成", fg="green")
         else:
-            click.secho(f"  [!] {msg}", fg="yellow")
+            _fail_with_guidance(
+                msg,
+                commands=["npm install -g @larksuite/cli", "lark-bridge upgrade"],
+                checks=["确认网络与 npm 全局安装权限"],
+                error_code="LAB-SETUP-002",
+            )
     else:
         click.echo("如需升级 lark-cli，请执行：npm install -g @larksuite/cli")
 
-    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces)
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="upgrade")
     for ws in workspaces:
-        copaw_rt.deploy_to_workspace(ws, force=True)
-        click.secho(f"  [✓] 已更新工作区技能: {ws}", fg="green")
+        backup = _create_backup_or_fail(ws, reason="upgrade", keep_last=backup_keep)
+        click.echo(f"  已创建备份: {backup.name}")
+        try:
+            copaw_rt.deploy_to_workspace(ws, force=True)
+            click.secho(f"  [✓] 已更新工作区技能: {ws}", fg="green")
+        except OSError as e:
+            _fail_with_guidance(
+                f"升级失败: {e}",
+                commands=[f"lark-bridge rollback --workspace {ws.name} --backup-id {backup.name}"],
+                error_code="LAB-DEPLOY-001",
+            )
 
     report = detect.run_full_detect()
     if not report.lark_config_ok:
@@ -356,9 +644,12 @@ def perms_sync_cmd(workspace: str | None, all_workspaces: bool, actor: str) -> N
     """实时拉取权限并写入工作区快照。"""
     exe = detect.which_lark_cli()
     if not exe:
-        click.secho("未找到 lark-cli，请先安装并完成配置登录。", fg="red", err=True)
-        raise SystemExit(1)
-    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces)
+        _fail_with_guidance(
+            "未找到 lark-cli，请先安装并完成配置登录。",
+            commands=["npm install -g @larksuite/cli", "lark-cli auth login --recommend"],
+            error_code="LAB-PERMS-001",
+        )
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="perms sync")
     for ws in workspaces:
         snap = permissions.build_snapshot(exe, actor=actor)
         p = permissions.write_snapshot(ws, snap)
@@ -376,7 +667,7 @@ def perms_sync_cmd(workspace: str | None, all_workspaces: bool, actor: str) -> N
 @click.option("--refresh", is_flag=True, help="读取前先刷新一次快照")
 def perms_show_cmd(workspace: str | None, all_workspaces: bool, refresh: bool) -> None:
     """展示权限快照。"""
-    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces)
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="perms show")
     exe = detect.which_lark_cli()
     for ws in workspaces:
         if refresh and exe:
@@ -404,8 +695,11 @@ def perms_check_cmd(scopes: tuple[str, ...], actor: str) -> None:
     """检查当前 token 是否具备指定 scope。"""
     exe = detect.which_lark_cli()
     if not exe:
-        click.secho("未找到 lark-cli，请先安装并完成配置登录。", fg="red", err=True)
-        raise SystemExit(1)
+        _fail_with_guidance(
+            "未找到 lark-cli，请先安装并完成配置登录。",
+            commands=["npm install -g @larksuite/cli", "lark-cli auth login --recommend"],
+            error_code="LAB-PERMS-001",
+        )
     check_result = permissions.check_scopes(exe, list(scopes))
     missing = [k for k, v in check_result.items() if not v]
     for s in scopes:
@@ -419,7 +713,12 @@ def perms_check_cmd(scopes: tuple[str, ...], actor: str) -> None:
     elif missing and actor == "bot":
         click.secho("\n缺少应用权限，请在开放平台开通相应 scope。", fg="yellow")
     if missing:
-        raise SystemExit(2)
+        _fail_with_guidance(
+            "scope 校验未通过，请补齐权限后重试。",
+            commands=["lark-bridge perms sync", "lark-bridge perms show"],
+            exit_code=exit_codes.E_ACTION_REQUIRED,
+            error_code="LAB-PERMS-002",
+        )
 
 
 @main.command("uninstall")
@@ -427,6 +726,13 @@ def perms_check_cmd(scopes: tuple[str, ...], actor: str) -> None:
 @click.option("-y", "--yes", "assume_yes", is_flag=True)
 @click.option("--workspace", "-w", default=None)
 @click.option("--all-workspaces", is_flag=True)
+@click.option(
+    "--backup-keep",
+    type=click.IntRange(1, 200),
+    default=copaw_rt.DEFAULT_BACKUP_KEEP,
+    show_default=True,
+    help="每个工作区最多保留多少份最近备份",
+)
 @click.option(
     "--purge-lark-cli-config",
     is_flag=True,
@@ -437,13 +743,16 @@ def uninstall_cmd(
     assume_yes: bool,
     workspace: str | None,
     all_workspaces: bool,
+    backup_keep: int,
     purge_lark_cli_config: bool,
 ) -> None:
     """移除技能目录与 skill.json 条目；可选卸载 @larksuite/cli。"""
     if not assume_yes:
         click.confirm("确认卸载 Lark Agent Bridge 技能？", abort=True)
-    workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
+    workspaces = _resolve_workspaces_or_exit(workspace, all_workspaces, action="uninstall")
     for ws in workspaces:
+        backup = _create_backup_or_fail(ws, reason="uninstall", keep_last=backup_keep)
+        click.echo(f"已创建备份: {backup.name}")
         copaw_rt.undeploy_from_workspace(ws)
         click.echo(f"已移除: {ws}")
     if not skill_only:
@@ -503,8 +812,11 @@ def verify_cmd() -> None:
     """对 lark-cli 做本地冒烟（version、help、config、auth、doctor）。需已安装 lark-cli。"""
     exe = detect.which_lark_cli()
     if not exe:
-        click.secho("未找到 lark-cli，请先: npm install -g @larksuite/cli", fg="red", err=True)
-        raise SystemExit(1)
+        _fail_with_guidance(
+            "未找到 lark-cli，请先安装后再执行 verify。",
+            commands=["npm install -g @larksuite/cli", "lark-bridge setup"],
+            error_code="LAB-VERIFY-001",
+        )
     click.echo(f"使用: {exe}\n")
     steps = self_check.run_verify_suite(exe)
     click.echo(self_check.format_report(steps))
@@ -517,7 +829,7 @@ def verify_cmd() -> None:
             f"\n关键项失败 {len(failed_hard)} 个（仅 --version / --help 为硬失败）。请检查 PATH 与 lark-cli 安装。",
             fg="red",
         )
-        raise SystemExit(2)
+        raise SystemExit(exit_codes.E_ACTION_REQUIRED)
     if soft_fail:
         click.secho(
             "\nconfig / auth / doctor 部分未通过：若尚未执行 lark-cli config init，属正常；完成后可再运行 verify。",
@@ -530,12 +842,12 @@ def _cli_passthrough_run() -> None:
     """Shared body for `cli` / `lark` passthrough subcommands."""
     exe = detect.which_lark_cli()
     if not exe:
-        click.secho(
-            "未找到 lark-cli。请先: npm install -g @larksuite/cli，或运行 lark-bridge setup",
-            fg="red",
-            err=True,
+        _fail_with_guidance(
+            "未找到 lark-cli，无法透传命令。",
+            commands=["npm install -g @larksuite/cli", "lark-bridge setup"],
+            exit_code=exit_codes.E_EXEC_NOT_FOUND,
+            error_code="LAB-FORWARD-001",
         )
-        raise SystemExit(127)
     code = cli_forward.run_lark_cli_forward(exe, sys.argv)
     raise SystemExit(code)
 

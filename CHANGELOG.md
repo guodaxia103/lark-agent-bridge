@@ -2,6 +2,22 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.7] — 2026-04-09
+
+### 新增
+
+- 新增 `lark-bridge resume`：在 `setup` 因配置/登录未完成而中断后，完成浏览器步骤即可继续部署
+- 新增 `lark-bridge rollback`：支持恢复工作区技能目录与 `skill.json` 到最近或指定备份
+- 新增 `lark-bridge backups list/cleanup`：查看并清理工作区备份
+- `update` / `upgrade` / `uninstall` 执行前自动创建工作区备份
+- `update` / `upgrade` / `uninstall` 新增 `--backup-keep`（默认保留最近 10 份备份）
+
+### 改进
+
+- `status` 支持 `--workspace` 并按工作区输出技能与权限快照状态
+- 关键失败路径统一为“原因 + 建议命令 + 检查项”的可执行提示，降低小白排障成本
+- 引入统一错误码体系（见 `docs/error-codes.md`）
+
 ## [0.3.6] — 2026-04-07
 
 ### 修订
@@ -87,6 +103,7 @@
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
 [0.3.6]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.6
+[0.3.7]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.7
 [0.3.5]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.5
 [0.3.4]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.4
 [0.3.3]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.3

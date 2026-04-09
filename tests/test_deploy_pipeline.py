@@ -5,7 +5,13 @@ import json
 
 from lark_agent_bridge import SKILL_DIR_NAME
 from lark_agent_bridge.manifest.merge import load_manifest
-from lark_agent_bridge.runtimes.copaw import deploy_to_workspace
+from lark_agent_bridge.runtimes.copaw import (
+    create_workspace_backup,
+    deploy_to_workspace,
+    list_workspace_backups,
+    prune_workspace_backups,
+    restore_workspace_backup,
+)
 
 
 def test_deploy_creates_skill_tree_and_manifest(tmp_path, monkeypatch):
@@ -95,3 +101,46 @@ def test_copaw_workspace_resolve_respects_env(tmp_path, monkeypatch):
     wss = resolve_workspace(None, all_workspaces=False)
     assert len(wss) == 1
     assert wss[0].name == "default"
+
+
+def test_backup_and_restore_workspace_state(tmp_path):
+    ws = tmp_path / "workspaces" / "default"
+    skill_dir = ws / "skills" / SKILL_DIR_NAME
+    skill_dir.mkdir(parents=True)
+    (skill_dir / "SKILL.md").write_text("old skill", encoding="utf-8")
+    (ws / "skill.json").write_text('{"skills":{"x":{}}}\n', encoding="utf-8")
+
+    backup = create_workspace_backup(ws, reason="update")
+    assert backup.is_dir()
+    assert (backup / "skill" / "SKILL.md").is_file()
+    assert (backup / "skill.json").is_file()
+
+    (skill_dir / "SKILL.md").write_text("new skill", encoding="utf-8")
+    (ws / "skill.json").write_text('{"skills":{"y":{}}}\n', encoding="utf-8")
+
+    restore_workspace_backup(ws, backup)
+    assert (skill_dir / "SKILL.md").read_text(encoding="utf-8") == "old skill"
+    assert '"x"' in (ws / "skill.json").read_text(encoding="utf-8")
+
+
+def test_list_workspace_backups_descending(tmp_path):
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True)
+    b1 = create_workspace_backup(ws, reason="first")
+    b2 = create_workspace_backup(ws, reason="second")
+    backups = list_workspace_backups(ws)
+    assert backups
+    assert backups[0].name == b2.name
+    assert backups[1].name == b1.name
+
+
+def test_prune_workspace_backups_keep_n(tmp_path):
+    ws = tmp_path / "workspaces" / "default"
+    ws.mkdir(parents=True)
+    create_workspace_backup(ws, reason="one")
+    create_workspace_backup(ws, reason="two")
+    create_workspace_backup(ws, reason="three")
+    removed = prune_workspace_backups(ws, keep_last=2)
+    assert len(removed) >= 1
+    remained = list_workspace_backups(ws)
+    assert len(remained) == 2
