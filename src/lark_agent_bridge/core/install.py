@@ -75,11 +75,24 @@ def npm_install_lark_cli_global(*, cn_mirror: bool = False) -> tuple[bool, str]:
     return True, "ok"
 
 
-def pip_install_copaw_upgrade() -> tuple[bool, str]:
-    code = subprocess.run(
-        [sys.executable, "-m", "pip", "install", "-U", "copaw"],
+def _pip_install_upgrade(package: str) -> int:
+    return subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-U", package],
         timeout=600,
     ).returncode
-    if code != 0:
-        return False, f"pip install -U copaw 失败 (exit {code})"
-    return True, "ok"
+
+
+def pip_install_paw_upgrade() -> tuple[bool, str]:
+    """Install QwenPaw first; fall back to CoPaw for compatibility."""
+    code = _pip_install_upgrade("qwenpaw")
+    if code == 0:
+        return True, "ok:qwenpaw"
+    fallback_code = _pip_install_upgrade("copaw")
+    if fallback_code == 0:
+        return True, "ok:copaw"
+    return False, f"pip install -U qwenpaw/copaw 失败 (exit {code}/{fallback_code})"
+
+
+def pip_install_copaw_upgrade() -> tuple[bool, str]:
+    """Backward-compatible wrapper."""
+    return pip_install_paw_upgrade()

@@ -13,7 +13,7 @@
 | 错误码 | Exit | 说明 |
 |------|------|------|
 | `LAB-CLI-001` | 1 | 参数冲突或命令使用错误（如 `--workspace` 与 `--all-workspaces` 同时传） |
-| `LAB-CLI-002` | 1 | 未找到 CoPaw 工作区 |
+| `LAB-CLI-002` | 1 | 未找到 QwenPaw 工作区 |
 | `LAB-SETUP-001` | 1 | Python 版本不满足要求 |
 | `LAB-SETUP-002` | 1 | Node/npm/lark-cli 依赖缺失 |
 | `LAB-SETUP-003` | 2 | 需要先完成 `lark-cli config init` |
@@ -33,4 +33,3 @@
 1. 错误码与原因（`[×][LAB-XXXX] ...`）
 2. 建议执行命令（可复制）
 3. 建议检查项（可选）
-

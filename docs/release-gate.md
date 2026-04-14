@@ -31,7 +31,7 @@
 ## 4. 兼容与边界
 
 - [ ] Windows PowerShell 路径与编码输出正常
-- [ ] Linux/macOS 路径默认值正常（`~/.copaw` / `~/.lark-cli`）
+- [ ] Linux/macOS 路径默认值正常（`~/.qwenpaw`，兼容 `~/.copaw` / `~/.lark-cli`）
 - [ ] 多工作区（`--workspace` / `--all-workspaces`）行为符合预期
 
 ## 5. 发布动作

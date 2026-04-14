@@ -17,6 +17,7 @@ def _mock_report(*, all_ok: bool = True) -> DetectReport:
     r.python_version = "3.12.0"
     r.copaw_installed = True
     r.copaw_version = "1.0.2b1"
+    r.paw_package = "qwenpaw"
     r.node_ok = True
     r.node_version = "20.0.0"
     r.npm_ok = True
@@ -149,12 +150,12 @@ class TestSetupInteractiveGuidance:
     @patch("lark_agent_bridge.cli.detect.which_lark_cli", return_value="/usr/bin/lark-cli")
     @patch("lark_agent_bridge.cli.detect.which_npm", return_value=(True, "10.0.0"))
     @patch("lark_agent_bridge.cli.detect.which_node", return_value=(True, "20.0.0"))
-    @patch("lark_agent_bridge.cli.detect.pip_show_copaw", return_value=(True, "1.0.2b1"))
+    @patch("lark_agent_bridge.cli.detect.detect_paw_package", return_value=(True, "1.0.2b1", "qwenpaw"))
     @patch("lark_agent_bridge.cli.detect.python_info", return_value=(True, "3.12.0"))
     def test_setup_stops_when_config_missing(
         self,
         _mock_py,
-        _mock_copaw,
+        _mock_paw,
         _mock_node,
         _mock_npm,
         _mock_which,
@@ -180,12 +181,12 @@ class TestSetupAutoInstallLarkCli:
     @patch("lark_agent_bridge.cli.detect.which_lark_cli", side_effect=[None, "/usr/bin/lark-cli"])
     @patch("lark_agent_bridge.cli.detect.which_npm", return_value=(True, "10.0.0"))
     @patch("lark_agent_bridge.cli.detect.which_node", return_value=(True, "20.0.0"))
-    @patch("lark_agent_bridge.cli.detect.pip_show_copaw", return_value=(True, "1.0.2b1"))
+    @patch("lark_agent_bridge.cli.detect.detect_paw_package", return_value=(True, "1.0.2b1", "qwenpaw"))
     @patch("lark_agent_bridge.cli.detect.python_info", return_value=(True, "3.12.0"))
     def test_setup_auto_installs_lark_cli_when_missing(
         self,
         _mock_py,
-        _mock_copaw,
+        _mock_paw,
         _mock_node,
         _mock_npm,
         _mock_which_lark,

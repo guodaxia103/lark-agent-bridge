@@ -66,14 +66,15 @@ def _resolve_workspaces_or_exit(
     workspaces = detect.resolve_workspace(workspace, all_workspaces=all_workspaces)
     if not workspaces:
         _fail_with_guidance(
-            f"{action}失败：未找到 CoPaw 工作区。",
+            f"{action}失败：未找到 QwenPaw 工作区。",
             commands=[
+                "qwenpaw init",
                 "copaw init",
                 "lark-bridge status --all-workspaces",
             ],
             checks=[
-                "确认 ~/.copaw/workspaces 下存在至少一个工作区目录",
-                "若使用了自定义路径，请检查 COPAW_WORKING_DIR 环境变量",
+                "确认 ~/.qwenpaw/workspaces 或 ~/.copaw/workspaces 下存在至少一个工作区目录",
+                "若使用了自定义路径，请检查 QWENPAW_WORKING_DIR / COPAW_WORKING_DIR 环境变量",
             ],
             error_code="LAB-CLI-002",
         )
@@ -117,17 +118,17 @@ def _create_backup_or_fail(ws: Path, *, reason: str, keep_last: int) -> Path:
 @click.version_option(__version__, prog_name="lark-bridge")
 @click.pass_context
 def main(ctx: click.Context) -> None:
-    """Lark Agent Bridge — 将 lark-cli 能力接入 CoPaw。"""
+    """Lark Agent Bridge — 将 lark-cli 能力接入 QwenPaw（兼容 CoPaw）。"""
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 
 
 @main.command("setup")
-@click.option("--workspace", "-w", default=None, help="CoPaw 工作区目录名，默认 default")
+@click.option("--workspace", "-w", default=None, help="QwenPaw 工作区目录名，默认 default")
 @click.option(
     "--all-workspaces",
     is_flag=True,
-    help="为 ~/.copaw/workspaces 下所有工作区安装技能",
+    help="为 QwenPaw 工作区安装技能（自动兼容 ~/.qwenpaw 与 ~/.copaw）",
 )
 @click.option("--cn", is_flag=True, help="使用国内 npm 镜像（npmmirror）")
 @click.option("-y", "--yes", "assume_yes", is_flag=True, help="非交互：默认同意安装命令")
@@ -155,7 +156,7 @@ def setup_cmd(
     skip_lark_check: bool,
     no_install_lark_cli: bool,
 ) -> None:
-    """一键检查环境、安装 lark-cli（可选）、并把技能写入 CoPaw 工作区。"""
+    """一键检查环境、安装 lark-cli（可选）、并把技能写入 QwenPaw 工作区。"""
     _print_header("lark-bridge setup")
 
     report = detect.run_full_detect()
@@ -176,25 +177,37 @@ def setup_cmd(
             error_code="LAB-SETUP-001",
         )
 
-    copaw_ok, copaw_ver = detect.pip_show_copaw()
-    if copaw_ok:
-        _ok(f"CoPaw 包已安装 ({copaw_ver or '?'})")
+    paw_ok, paw_ver, paw_pkg = detect.detect_paw_package()
+    if paw_ok:
+        pkg_hint = paw_pkg or "qwenpaw/copaw"
+        _ok(f"QwenPaw 包已安装 ({pkg_hint} {paw_ver or '?'})")
     else:
-        _warn("未检测到 copaw（pip show copaw）")
-        if assume_yes or click.confirm("是否现在执行 pip install -U copaw？", default=True):
-            ok, msg = install.pip_install_copaw_upgrade()
+        _warn("未检测到 qwenpaw/copaw（pip show qwenpaw 或 pip show copaw）")
+        if assume_yes or click.confirm("是否现在执行 pip install -U qwenpaw？", default=True):
+            ok, msg = install.pip_install_paw_upgrade()
             if ok:
-                _ok("pip install -U copaw 完成")
+                if "copaw" in msg:
+                    _ok("已安装兼容包 copaw（建议后续迁移到 qwenpaw）")
+                else:
+                    _ok("pip install -U qwenpaw 完成")
             else:
                 _fail_with_guidance(
                     msg,
-                    commands=["python -m pip install -U copaw", "lark-bridge setup"],
+                    commands=[
+                        "python -m pip install -U qwenpaw",
+                        "python -m pip install -U copaw",
+                        "lark-bridge setup",
+                    ],
                     error_code="LAB-SETUP-002",
                 )
         else:
             _fail_with_guidance(
-                "用户取消了 copaw 安装，setup 已停止。",
-                commands=["python -m pip install -U copaw", "lark-bridge setup"],
+                "用户取消了 qwenpaw 安装，setup 已停止。",
+                commands=[
+                    "python -m pip install -U qwenpaw",
+                    "python -m pip install -U copaw",
+                    "lark-bridge setup",
+                ],
                 error_code="LAB-SETUP-002",
             )
 
@@ -321,7 +334,7 @@ def setup_cmd(
 
     click.echo()
     click.secho(
-        "  完成。请在 CoPaw 控制台新开对话，并在技能中启用 "
+        "  完成。请在 QwenPaw 控制台新开对话，并在技能中启用 "
         + SKILL_DIR_NAME
         + "（若未启用）。",
         fg="green",
@@ -331,7 +344,7 @@ def setup_cmd(
 
 
 @main.command("resume")
-@click.option("--workspace", "-w", default=None, help="CoPaw 工作区目录名，默认 default")
+@click.option("--workspace", "-w", default=None, help="QwenPaw 工作区目录名，默认 default")
 @click.option("--all-workspaces", is_flag=True, help="对所有工作区继续部署")
 @click.option("--force", is_flag=True, help="覆盖已存在的技能目录并重新写入")
 def resume_cmd(workspace: str | None, all_workspaces: bool, force: bool) -> None:
@@ -389,7 +402,9 @@ def status_cmd(workspace: str | None, all_workspaces: bool, refresh_perms: bool)
     report = detect.run_full_detect()
     click.echo(f"Python: {report.python_version}  {'✓' if report.python_ok else '✗'}")
     click.echo(
-        f"CoPaw:  {report.copaw_version or '—'}  {'✓' if report.copaw_installed else '✗'}",
+        f"QwenPaw: {report.copaw_version or '—'}"
+        + (f" ({report.paw_package})" if report.paw_package else "")
+        + f"  {'✓' if report.copaw_installed else '✗'}",
     )
     click.echo(
         f"Node:   {report.node_version or '—'}  {'✓' if report.node_ok else '✗'}",
@@ -722,7 +737,7 @@ def perms_check_cmd(scopes: tuple[str, ...], actor: str) -> None:
 
 
 @main.command("uninstall")
-@click.option("--skill-only", is_flag=True, help="只移除 CoPaw 技能，不卸载 npm 包")
+@click.option("--skill-only", is_flag=True, help="只移除 QwenPaw 技能，不卸载 npm 包")
 @click.option("-y", "--yes", "assume_yes", is_flag=True)
 @click.option("--workspace", "-w", default=None)
 @click.option("--all-workspaces", is_flag=True)
@@ -792,7 +807,11 @@ def doctor_cmd() -> None:
     click.echo(f"bridge 版本: {__version__}")
     click.echo(f"OS: {platform.system()} {platform.release()} {platform.machine()}")
     click.echo(f"Python: {report.python_version} exe={sys.executable}")
-    click.echo(f"CoPaw pip: {report.copaw_installed} {report.copaw_version}")
+    click.echo(
+        "QwenPaw pip: "
+        + f"{report.copaw_installed} {report.copaw_version}"
+        + (f" ({report.paw_package})" if report.paw_package else ""),
+    )
     click.echo(f"Node: {report.node_ok} {report.node_version}")
     click.echo(f"npm: {report.npm_ok} {report.npm_version}")
     click.echo(f"lark-cli: {report.lark_cli_path}")
@@ -804,7 +823,7 @@ def doctor_cmd() -> None:
         click.echo("issues:")
         for e in report.errors:
             click.echo(f"  - {e}")
-    click.echo(f"COPAW root: {detect.copaw_working_dir()}")
+    click.echo(f"QWENPAW/COPAW root: {detect.copaw_working_dir()}")
 
 
 @main.command("verify")
@@ -835,7 +854,7 @@ def verify_cmd() -> None:
             "\nconfig / auth / doctor 部分未通过：若尚未执行 lark-cli config init，属正常；完成后可再运行 verify。",
             fg="yellow",
         )
-    click.secho("\nCLI 本体可用；请在完成飞书配置后于 CoPaw 中试用。", fg="green")
+    click.secho("\nCLI 本体可用；请在完成飞书配置后于 QwenPaw 中试用。", fg="green")
 
 
 def _cli_passthrough_run() -> None:

@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Detect Python, CoPaw, Node, lark-cli, config, and auth state."""
+"""Detect Python, QwenPaw/CoPaw, Node, lark-cli, config, and auth state."""
 
 from __future__ import annotations
 
@@ -26,6 +26,7 @@ class DetectReport:
     python_version: str = ""
     copaw_installed: bool = False
     copaw_version: str = ""
+    paw_package: str = ""
     node_ok: bool = False
     node_version: str = ""
     npm_ok: bool = False
@@ -78,9 +79,9 @@ def python_info() -> tuple[bool, str]:
     return ok, v
 
 
-def pip_show_copaw() -> tuple[bool, str]:
+def _pip_show_package(package: str) -> tuple[bool, str]:
     code, out, _ = _run_capture(
-        [sys.executable, "-m", "pip", "show", "copaw"],
+        [sys.executable, "-m", "pip", "show", package],
         timeout=30.0,
     )
     if code != 0:
@@ -88,6 +89,21 @@ def pip_show_copaw() -> tuple[bool, str]:
     m = re.search(r"^Version:\s*(\S+)", out, re.MULTILINE)
     ver = m.group(1) if m else ""
     return True, ver
+
+
+def detect_paw_package() -> tuple[bool, str, str]:
+    """Return (installed, version, package_name) with QwenPaw-first strategy."""
+    for pkg in ("qwenpaw", "copaw"):
+        ok, ver = _pip_show_package(pkg)
+        if ok:
+            return True, ver, pkg
+    return False, "", ""
+
+
+def pip_show_copaw() -> tuple[bool, str]:
+    """Backward-compatible wrapper (now checks qwenpaw first, then copaw)."""
+    ok, ver, _pkg = detect_paw_package()
+    return ok, ver
 
 
 def which_node() -> tuple[bool, str]:
@@ -183,9 +199,9 @@ def run_full_detect() -> DetectReport:
     if not r.python_ok:
         r.errors.append("需要 Python 3.10 或更高版本")
 
-    r.copaw_installed, r.copaw_version = pip_show_copaw()
+    r.copaw_installed, r.copaw_version, r.paw_package = detect_paw_package()
     if not r.copaw_installed:
-        r.errors.append("未检测到 copaw 包（pip install copaw）")
+        r.errors.append("未检测到 qwenpaw/copaw 包（推荐 pip install qwenpaw）")
 
     r.node_ok, r.node_version = which_node()
     if not r.node_ok:
@@ -224,10 +240,20 @@ def run_full_detect() -> DetectReport:
 def copaw_working_dir() -> Path:
     import os
 
+    raw = os.environ.get("QWENPAW_WORKING_DIR", "").strip()
+    if raw:
+        return Path(raw).expanduser().resolve()
     raw = os.environ.get("COPAW_WORKING_DIR", "").strip()
     if raw:
         return Path(raw).expanduser().resolve()
-    return Path.home() / ".copaw"
+
+    qwenpaw_root = (Path.home() / ".qwenpaw").expanduser()
+    copaw_root = (Path.home() / ".copaw").expanduser()
+    if qwenpaw_root.exists():
+        return qwenpaw_root.resolve()
+    if copaw_root.exists():
+        return copaw_root.resolve()
+    return qwenpaw_root
 
 
 def lark_cli_config_dir() -> Path:

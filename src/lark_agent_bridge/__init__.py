@@ -1,4 +1,4 @@
-"""Lark Agent Bridge — connect CoPaw with lark-cli."""
+"""Lark Agent Bridge — connect QwenPaw (compatible with CoPaw) with lark-cli."""
 
 __version__ = "0.3.7"
 

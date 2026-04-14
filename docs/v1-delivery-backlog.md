@@ -37,7 +37,7 @@
 - Owner: 产品 + 开发
 - 说明: 不上报隐私，仅本地结构化日志，便于支持排障
 - 交付:
-  - `~/.copaw/...` 下生成最近一次 setup/resume 结果摘要
+  - `~/.qwenpaw/...`（兼容 `~/.copaw/...`）下生成最近一次 setup/resume 结果摘要
   - `doctor` 展示最近失败阶段
 - 验收:
   - 失败阶段可定位到 Python/Node/lark-cli/config/auth/deploy 任一阶段
