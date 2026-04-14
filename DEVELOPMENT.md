@@ -325,8 +325,8 @@ V1 两周 backlog 见 [docs/v1-delivery-backlog.md](docs/v1-delivery-backlog.md)
 2. 提交并推送 `main`。
 3. 打标签并推送（触发 [`.github/workflows/publish-pypi.yml`](.github/workflows/publish-pypi.yml) 构建并上传 PyPI）：
    ```bash
-   git tag -a v0.3.7 -m "v0.3.7"
-   git push origin v0.3.7
+   git tag -a v0.3.8 -m "v0.3.8"
+   git push origin v0.3.8
    ```
 4. 在 GitHub 上 **Releases → Draft a new release**，选择该标签，填写说明后发布（用户可下载 Source zip / 用 README 中的 zip 安装命令）。
 5. **首次上传 PyPI**：在仓库 **Settings → Secrets → Actions** 中配置 `PYPI_API_TOKEN`（[PyPI API token](https://pypi.org/manage/account/token/)）。推送标签后工作流会自动上传；若未配置 secret，工作流会失败，可在配置后 **Re-run failed jobs**。

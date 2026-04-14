@@ -2,6 +2,17 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.8] — 2026-04-14
+
+### 改进
+
+- 全面切换为 QwenPaw 优先命名：`setup/status/doctor` 与关键提示改为 QwenPaw 语义
+- 运行时保持 CoPaw 兼容：仍可识别 `copaw` 包与历史工作区
+- `setup` 的 Python 包检测/安装改为“优先 `qwenpaw`，失败回退 `copaw`”
+- 工作区根目录解析改为优先 `QWENPAW_WORKING_DIR`，兼容 `COPAW_WORKING_DIR`
+- 默认工作区目录改为 `~/.qwenpaw`，若存在旧目录 `~/.copaw` 会自动兼容
+- README 与错误码/发布门禁文档同步更新到 QwenPaw 口径
+
 ## [0.3.7] — 2026-04-09
 
 ### 新增
@@ -102,8 +113,9 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
-[0.3.6]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.6
+[0.3.8]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.8
 [0.3.7]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.7
+[0.3.6]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.6
 [0.3.5]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.5
 [0.3.4]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.4
 [0.3.3]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.3
