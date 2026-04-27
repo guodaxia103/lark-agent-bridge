@@ -3,7 +3,11 @@
 
 from __future__ import annotations
 
-from lark_agent_bridge.core.detect import parse_auth_status, parse_config_show
+from lark_agent_bridge.core.detect import (
+    lark_cli_meets_recommended,
+    parse_auth_status,
+    parse_config_show,
+)
 
 
 class TestParseConfigShow:
@@ -78,3 +82,17 @@ class TestParseAuthStatus:
     def test_none_status(self):
         info = parse_auth_status('{"tokenStatus":"none"}')
         assert info.token_ok is False
+
+
+class TestLarkCliVersion:
+    def test_recommended_version_matches_plain_semver(self):
+        assert lark_cli_meets_recommended("1.0.19") is True
+
+    def test_newer_version_matches_prefixed_output(self):
+        assert lark_cli_meets_recommended("lark-cli 1.0.20") is True
+
+    def test_older_version_warns(self):
+        assert lark_cli_meets_recommended("1.0.18") is False
+
+    def test_unparseable_version_is_unknown(self):
+        assert lark_cli_meets_recommended("dev-build") is None

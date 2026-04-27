@@ -2,6 +2,10 @@
 name: lark_cli_bridge
 description: "Full access to the official Feishu/Lark CLI (lark-cli) on this machine: any service, shortcut, or raw OpenAPI via lark-cli api. Use discovery commands first (--help, schema), then execute. Separate from the built-in Feishu bot channel; often uses user OAuth. See references/ for domain map and auth rules."
 metadata:
+  qwenpaw:
+    emoji: "🪶"
+    requires:
+      bins: ["lark-cli"]
   copaw:
     emoji: "🪶"
     requires:
@@ -20,12 +24,12 @@ metadata:
 4. 命令不存在时再用 `lark-cli api ...`
 5. 出错时按 `references/output_and_errors.md` 的模板返回
 
-## 与 CoPaw 内置「飞书通道」的关系
+## 与 QwenPaw 内置「飞书通道」的关系
 
 | 方式 | 说明 |
 |------|------|
 | 内置飞书通道 | 机器人在飞书 App 内收发信息 |
-| 本技能 | 在 **CoPaw 所在电脑** 上执行 `lark-cli`，多为 **用户 OAuth** 身份，可访问用户日历、邮箱等资源（取决于授权） |
+| 本技能 | 在 **QwenPaw 所在电脑** 上执行 `lark-cli`，多为 **用户 OAuth** 身份，可访问用户日历、邮箱等资源（取决于授权） |
 
 两者可并存，凭证与权限模型不同，不要混为一谈。
 
@@ -64,7 +68,7 @@ lark-cli doctor
 | `references/auth_and_identity.md` | 用户/bot 身份、`--as`、权限与登录；**`auth login` 在 Agent 中请加 `--json`**（stdout 出授权信息） |
 | `references/output_and_errors.md` | JSON、`--jq`、退出码、`_notice` |
 
-若用户已用 `npx skills add larksuite/cli` 安装官方 Skills，那些 Markdown 在**本机 skills 目录**；本包内的 `references` 是精简版，保证在 CoPaw 内可读。
+若用户已用 `npx skills add larksuite/cli` 安装官方 Skills，那些 Markdown 在**本机 skills 目录**；本包内的 `references` 是精简版，保证在 QwenPaw 内可读。
 
 ## 执行前权限判断（强制）
 

@@ -2,6 +2,16 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.9] — 2026-04-27
+
+### 改进
+
+- 同步 `larksuite/cli` 最新 Agent Skills 能力清单，补充 `lark-slides` 与 `lark-attendance`
+- 技能文档中的运行时命名统一为 QwenPaw，并保留 CoPaw 兼容 metadata
+- QwenPaw 初始化指引更新为 `qwenpaw init --defaults` 优先
+- 新增 `lark-cli >= 1.0.19` 建议版本提示，避免新版 slides/attendance/auth/config 能力不可用
+- 补充 `config bind` 多工作区凭证隔离指引
+
 ## [0.3.8] — 2026-04-14
 
 ### 改进
@@ -113,6 +123,7 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.9]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.9
 [0.3.8]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.8
 [0.3.7]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.7
 [0.3.6]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.6

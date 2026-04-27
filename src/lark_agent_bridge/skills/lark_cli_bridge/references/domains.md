@@ -7,7 +7,7 @@ npx skills add larksuite/cli -y -g
 npx skills add larksuite/cli -s <name> -y
 ```
 
-按需安装单域。在 CoPaw 中完成任务时，优先用本机 `lark-cli` + 下表「典型场景」选择领域；细节以官方 SKILL 与 `lark-cli --help` 为准。
+按需安装单域。在 QwenPaw 中完成任务时，优先用本机 `lark-cli` + 下表「典型场景」选择领域；细节以官方 SKILL 与 `lark-cli --help` 为准。
 
 | Skill 包名 | CLI 顶层命令 | 典型场景 |
 |------------|-------------|----------|
@@ -17,6 +17,7 @@ npx skills add larksuite/cli -s <name> -y
 | lark-doc | `docs` | 云文档 |
 | lark-drive | `drive` | 云空间、文件 |
 | lark-sheets | `sheets` | 电子表格 |
+| lark-slides | `slides` | 演示文稿、幻灯片页面 |
 | lark-base | `base` | 多维表格 |
 | lark-wiki | `wiki` | 知识库 |
 | lark-task | `task` | 任务 |
@@ -26,6 +27,7 @@ npx skills add larksuite/cli -s <name> -y
 | lark-event | `event` | 事件订阅 |
 | lark-approval | `approval` | 审批 |
 | lark-whiteboard | `whiteboard` | 白板 |
+| lark-attendance | `attendance` | 个人考勤打卡记录 |
 | lark-workflow-meeting-summary | — | 会议摘要工作流（组合命令） |
 | lark-workflow-standup-report | — | 站会报告工作流（组合命令） |
 | lark-openapi-explorer | — | 从官方文档挖掘未封装 API |

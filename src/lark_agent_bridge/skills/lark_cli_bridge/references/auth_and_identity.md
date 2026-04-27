@@ -63,6 +63,16 @@ lark-cli config init --new
 
 在终端中按提示在浏览器完成（需用户本人操作）。
 
+## 多工作区凭证隔离
+
+当一个人同时使用多个 QwenPaw 工作区、多个飞书应用或多个账号时，不要让不同 Agent 共享同一套默认凭证。新版 `lark-cli` 提供 `config bind` 能力，可按 Agent/工作区绑定凭证；具体参数以本机版本为准：
+
+```bash
+lark-cli config bind --help
+```
+
+绑定前先确认当前工作区和身份，再执行 `lark-bridge perms sync` 刷新权限快照，避免旧快照误导后续判断。
+
 ## 清除本机授权与重新登录
 
 以下为 **`lark-cli auth`** 子命令（非 `lark-bridge`）。

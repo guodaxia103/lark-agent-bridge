@@ -68,6 +68,7 @@ def _resolve_workspaces_or_exit(
         _fail_with_guidance(
             f"{action}失败：未找到 QwenPaw 工作区。",
             commands=[
+                "qwenpaw init --defaults",
                 "qwenpaw init",
                 "copaw init",
                 "lark-bridge status --all-workspaces",
@@ -276,6 +277,13 @@ def setup_cmd(
                 error_code="LAB-SETUP-002",
             )
         _ok(f"lark-cli: {path}")
+        cli_ver = detect.lark_cli_version(path)
+        if detect.lark_cli_meets_recommended(cli_ver) is False:
+            _warn(
+                "当前 lark-cli 版本低于建议版本 "
+                + detect.RECOMMENDED_LARK_CLI_VERSION
+                + "，部分 slides/attendance/新版 auth 能力可能不可用",
+            )
 
         report = detect.run_full_detect()
         if not report.lark_config_ok:
@@ -414,6 +422,11 @@ def status_cmd(workspace: str | None, all_workspaces: bool, refresh_perms: bool)
     )
     if report.lark_cli_path:
         click.echo(f"lark-cli: {report.lark_cli_path} ({report.lark_cli_version}) ✓")
+        if report.lark_cli_recommended is False:
+            click.secho(
+                f"  建议升级 lark-cli >= {detect.RECOMMENDED_LARK_CLI_VERSION}: npm install -g @larksuite/cli",
+                fg="yellow",
+            )
     else:
         click.echo("lark-cli: — ✗")
     click.echo(
@@ -816,6 +829,12 @@ def doctor_cmd() -> None:
     click.echo(f"npm: {report.npm_ok} {report.npm_version}")
     click.echo(f"lark-cli: {report.lark_cli_path}")
     click.echo(f"lark-cli version string: {report.lark_cli_version}")
+    if report.lark_cli_recommended is False:
+        click.echo(f"lark-cli recommended: false (建议 >= {detect.RECOMMENDED_LARK_CLI_VERSION})")
+    elif report.lark_cli_recommended is True:
+        click.echo("lark-cli recommended: true")
+    else:
+        click.echo("lark-cli recommended: unknown")
     click.echo(f"config ok: {report.lark_config_ok} ({report.lark_config_hint})")
     if report.lark_auth:
         click.echo(f"auth raw: {report.lark_auth.raw}")

@@ -1,5 +1,5 @@
 """Lark Agent Bridge — connect QwenPaw (compatible with CoPaw) with lark-cli."""
 
-__version__ = "0.3.8"
+__version__ = "0.3.9"
 
 SKILL_DIR_NAME = "lark_cli_bridge"

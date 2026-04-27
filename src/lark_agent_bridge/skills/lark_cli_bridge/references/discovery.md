@@ -45,7 +45,7 @@ lark-cli api POST /open-apis/... --data '{"field":"value"}'
 
 ## 6. 官方 Agent Skills（扩展阅读）
 
-安装后可在本机阅读各域最佳实践（与 CoPaw 的 `read_file` 独立，需用户已执行）：
+安装后可在本机阅读各域最佳实践（与 QwenPaw 的 `read_file` 独立，需用户已执行）：
 
 ```bash
 npx skills add larksuite/cli -y -g

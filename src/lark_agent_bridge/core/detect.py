@@ -13,6 +13,9 @@ from pathlib import Path
 from typing import Any
 
 
+RECOMMENDED_LARK_CLI_VERSION = "1.0.19"
+
+
 @dataclass
 class LarkCliAuthInfo:
     raw: dict[str, Any] = field(default_factory=dict)
@@ -33,6 +36,7 @@ class DetectReport:
     npm_version: str = ""
     lark_cli_path: str | None = None
     lark_cli_version: str = ""
+    lark_cli_recommended: bool | None = None
     lark_config_ok: bool = False
     lark_config_hint: str = ""
     lark_auth: LarkCliAuthInfo | None = None
@@ -154,6 +158,21 @@ def lark_cli_version(exe: str) -> str:
     return out.strip()[:200]
 
 
+def _parse_semver(text: str) -> tuple[int, int, int] | None:
+    m = re.search(r"(\d+)\.(\d+)\.(\d+)", text or "")
+    if not m:
+        return None
+    return int(m.group(1)), int(m.group(2)), int(m.group(3))
+
+
+def lark_cli_meets_recommended(version_text: str) -> bool | None:
+    current = _parse_semver(version_text)
+    recommended = _parse_semver(RECOMMENDED_LARK_CLI_VERSION)
+    if not current or not recommended:
+        return None
+    return current >= recommended
+
+
 def parse_config_show(stdout: str, stderr: str) -> tuple[bool, str]:
     s = (stdout or "").strip()
     if not s:
@@ -214,6 +233,7 @@ def run_full_detect() -> DetectReport:
     r.lark_cli_path = which_lark_cli()
     if r.lark_cli_path:
         r.lark_cli_version = lark_cli_version(r.lark_cli_path)
+        r.lark_cli_recommended = lark_cli_meets_recommended(r.lark_cli_version)
         code, out, err = _run_capture(
             [r.lark_cli_path, "config", "show"],
             timeout=30.0,
