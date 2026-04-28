@@ -7,6 +7,7 @@ from lark_agent_bridge.core.detect import (
     lark_cli_meets_recommended,
     parse_auth_status,
     parse_config_show,
+    qwenpaw_upgrade_guidance,
 )
 
 
@@ -96,3 +97,23 @@ class TestLarkCliVersion:
 
     def test_unparseable_version_is_unknown(self):
         assert lark_cli_meets_recommended("dev-build") is None
+
+
+class TestQwenPawUpgradeGuidance:
+    def test_pip_install_uses_python_module_pip(self):
+        assert qwenpaw_upgrade_guidance(install_method="pip", package="qwenpaw") == [
+            "python -m pip install -U qwenpaw",
+        ]
+
+    def test_legacy_copaw_guides_migration(self):
+        assert qwenpaw_upgrade_guidance(install_method="legacy-pip", package="copaw") == [
+            "python -m pip install -U qwenpaw",
+            "qwenpaw init --defaults",
+            "qwenpaw app",
+        ]
+
+    def test_script_install_uses_official_installer(self, monkeypatch):
+        monkeypatch.setattr("sys.platform", "win32")
+        assert qwenpaw_upgrade_guidance(install_method="script", package="qwenpaw") == [
+            "irm https://qwenpaw.agentscope.io/install.ps1 | iex",
+        ]

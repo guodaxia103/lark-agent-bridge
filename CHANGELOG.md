@@ -2,6 +2,15 @@
 
 本文档记录面向用户的版本说明；完整提交历史见 Git。
 
+## [0.3.10] — 2026-04-28
+
+### 改进
+
+- `upgrade` 新增 `--with-qwenpaw`，对 pip 安装的 QwenPaw 执行 `python -m pip install -U qwenpaw`
+- 官方脚本安装的 QwenPaw 不再误按 pip 升级，改为提示重新运行官方安装脚本
+- 旧 `copaw` 检测场景改为提示迁移到 `qwenpaw`
+- `upgrade` 默认同时给出 QwenPaw 与 `lark-cli` 官方升级命令
+
 ## [0.3.9] — 2026-04-27
 
 ### 改进
@@ -123,6 +132,7 @@
 - PyPI 包名：`lark-agent-bridge`
 - GitHub Release：标签 `v0.3.0` 对应本版本；亦可 `pip install` GitHub 源码 zip（无需 Git）
 
+[0.3.10]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.10
 [0.3.9]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.9
 [0.3.8]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.8
 [0.3.7]: https://github.com/guodaxia103/lark-agent-bridge/tree/v0.3.7

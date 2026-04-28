@@ -93,6 +93,14 @@ def pip_install_paw_upgrade() -> tuple[bool, str]:
     return False, f"pip install -U qwenpaw/copaw 失败 (exit {code}/{fallback_code})"
 
 
+def pip_install_qwenpaw_upgrade() -> tuple[bool, str]:
+    """Upgrade QwenPaw using the official pip package name."""
+    code = _pip_install_upgrade("qwenpaw")
+    if code != 0:
+        return False, f"python -m pip install -U qwenpaw 失败 (exit {code})"
+    return True, "ok:qwenpaw"
+
+
 def pip_install_copaw_upgrade() -> tuple[bool, str]:
     """Backward-compatible wrapper."""
     return pip_install_paw_upgrade()

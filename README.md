@@ -64,10 +64,10 @@ pip install -U lark-agent-bridge
 **备选 A — 按 [版本标签](https://github.com/guodaxia103/lark-agent-bridge/tags) 安装源码 zip**（固定版本，**无需 Git**；与下面命令里的标签名一致即可）：
 
 ```bash
-pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.9.zip"
+pip install "https://github.com/guodaxia103/lark-agent-bridge/archive/refs/tags/v0.3.10.zip"
 ```
 
-将 `v0.3.9` 换成标签页最新的版本号即可。
+将 `v0.3.10` 换成标签页最新的版本号即可。
 
 **备选 B — 需要本机已安装 Git** — 跟踪 `main` 分支最新开发版：
 
@@ -240,8 +240,16 @@ lark-bridge rollback --workspace 你的工作区 --backup-id latest
 
 ```bash
 lark-bridge upgrade
+lark-bridge upgrade --with-qwenpaw       # pip 安装的 QwenPaw：python -m pip install -U qwenpaw
 lark-bridge upgrade --with-lark-cli      # 同时尝试升级全局 lark-cli
 lark-bridge upgrade --backup-keep 20
+```
+
+如果 QwenPaw 是官方脚本安装，本工具不会自动执行远程脚本，会提示按官方方式重新运行安装脚本升级：
+
+```bash
+curl -fsSL https://qwenpaw.agentscope.io/install.sh | bash       # macOS / Linux
+irm https://qwenpaw.agentscope.io/install.ps1 | iex              # Windows PowerShell
 ```
 
 ### `resume`
@@ -371,6 +379,27 @@ Windows 一般不会遇到此问题。
 
 ```bash
 lark-cli auth login --recommend
+```
+
+### Q: 如何升级 QwenPaw 和 lark-cli
+
+pip 安装的 QwenPaw：
+
+```bash
+python -m pip install -U qwenpaw
+```
+
+官方脚本安装的 QwenPaw：按官方文档重新运行安装脚本即可升级。
+
+```bash
+curl -fsSL https://qwenpaw.agentscope.io/install.sh | bash       # macOS / Linux
+irm https://qwenpaw.agentscope.io/install.ps1 | iex              # Windows PowerShell
+```
+
+飞书官方 `lark-cli`：
+
+```bash
+npm install -g @larksuite/cli
 ```
 
 ### Q: 想清除授权或换账号

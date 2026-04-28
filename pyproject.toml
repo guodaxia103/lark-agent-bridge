@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lark-agent-bridge"
-version = "0.3.9"
+version = "0.3.10"
 description = "Bridge QwenPaw (compatible with CoPaw) with larksuite/lark-cli for Feishu/Lark automation."
 readme = "README.md"
 requires-python = ">=3.10"

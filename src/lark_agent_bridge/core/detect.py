@@ -30,6 +30,8 @@ class DetectReport:
     copaw_installed: bool = False
     copaw_version: str = ""
     paw_package: str = ""
+    paw_launcher_path: str | None = None
+    paw_install_method: str = ""
     node_ok: bool = False
     node_version: str = ""
     npm_ok: bool = False
@@ -104,10 +106,51 @@ def detect_paw_package() -> tuple[bool, str, str]:
     return False, "", ""
 
 
+def which_paw_cli() -> str | None:
+    return shutil.which("qwenpaw") or shutil.which("copaw")
+
+
+def detect_paw_runtime() -> tuple[bool, str, str, str | None, str]:
+    """Return runtime info with official QwenPaw install modes in mind."""
+    pkg_ok, pkg_ver, pkg_name = detect_paw_package()
+    launcher = which_paw_cli()
+    if pkg_ok:
+        method = "pip" if pkg_name == "qwenpaw" else "legacy-pip"
+        return True, pkg_ver, pkg_name, launcher, method
+    if launcher:
+        normalized = launcher.replace("\\", "/").lower()
+        method = "script" if "/.qwenpaw/" in normalized else "cli"
+        return True, "", "qwenpaw", launcher, method
+    return False, "", "", None, ""
+
+
 def pip_show_copaw() -> tuple[bool, str]:
     """Backward-compatible wrapper (now checks qwenpaw first, then copaw)."""
-    ok, ver, _pkg = detect_paw_package()
+    ok, ver, _pkg, _launcher, _method = detect_paw_runtime()
     return ok, ver
+
+
+def qwenpaw_upgrade_guidance(
+    *,
+    install_method: str,
+    package: str,
+    launcher_path: str | None = None,
+) -> list[str]:
+    if package == "copaw" or install_method == "legacy-pip":
+        return [
+            "python -m pip install -U qwenpaw",
+            "qwenpaw init --defaults",
+            "qwenpaw app",
+        ]
+    if install_method == "script":
+        if sys.platform == "win32":
+            return ["irm https://qwenpaw.agentscope.io/install.ps1 | iex"]
+        return ["curl -fsSL https://qwenpaw.agentscope.io/install.sh | bash"]
+    if install_method in ("pip", "cli"):
+        return ["python -m pip install -U qwenpaw"]
+    if launcher_path:
+        return ["qwenpaw --version", "python -m pip install -U qwenpaw"]
+    return ["python -m pip install -U qwenpaw"]
 
 
 def which_node() -> tuple[bool, str]:
@@ -218,7 +261,13 @@ def run_full_detect() -> DetectReport:
     if not r.python_ok:
         r.errors.append("需要 Python 3.10 或更高版本")
 
-    r.copaw_installed, r.copaw_version, r.paw_package = detect_paw_package()
+    (
+        r.copaw_installed,
+        r.copaw_version,
+        r.paw_package,
+        r.paw_launcher_path,
+        r.paw_install_method,
+    ) = detect_paw_runtime()
     if not r.copaw_installed:
         r.errors.append("未检测到 qwenpaw/copaw 包（推荐 pip install qwenpaw）")
 

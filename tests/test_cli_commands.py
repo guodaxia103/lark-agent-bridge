@@ -18,6 +18,7 @@ def _mock_report(*, all_ok: bool = True) -> DetectReport:
     r.copaw_installed = True
     r.copaw_version = "1.0.2b1"
     r.paw_package = "qwenpaw"
+    r.paw_install_method = "pip"
     r.node_ok = True
     r.node_version = "20.0.0"
     r.npm_ok = True
@@ -261,6 +262,33 @@ class TestResumeAndRollback:
         result = runner.invoke(main, ["resume"])
         assert result.exit_code == 0
         assert "下一步建议：lark-bridge status" in result.output
+
+    @patch("lark_agent_bridge.cli.detect.resolve_workspace")
+    @patch("lark_agent_bridge.cli.copaw_rt.create_workspace_backup")
+    @patch("lark_agent_bridge.cli.copaw_rt.deploy_to_workspace")
+    @patch("lark_agent_bridge.cli.install.pip_install_qwenpaw_upgrade", return_value=(True, "ok:qwenpaw"))
+    @patch("lark_agent_bridge.cli.detect.run_full_detect", return_value=_mock_report())
+    def test_upgrade_with_qwenpaw_runs_pip_upgrade(
+        self,
+        _mock_detect,
+        mock_upgrade_qwenpaw,
+        mock_deploy,
+        mock_backup,
+        mock_resolve,
+        tmp_path,
+    ):
+        ws = tmp_path / "workspaces" / "default"
+        ws.mkdir(parents=True)
+        mock_resolve.return_value = [ws]
+        mock_backup.return_value = ws / ".lark-bridge-backups" / "latest"
+        mock_deploy.return_value = ws / "skills" / "lark_cli_bridge"
+
+        runner = CliRunner()
+        result = runner.invoke(main, ["upgrade", "--with-qwenpaw"])
+
+        assert result.exit_code == 0
+        assert "QwenPaw pip 升级完成" in result.output
+        mock_upgrade_qwenpaw.assert_called_once()
 
     @patch("lark_agent_bridge.cli.detect.resolve_workspace")
     @patch("lark_agent_bridge.cli.copaw_rt.list_workspace_backups")

@@ -598,10 +598,27 @@ def backups_cleanup_cmd(workspace: str | None, all_workspaces: bool, keep: int) 
         click.echo(f"{ws.name}: 已删除 {len(removed)} 份旧备份，保留最近 {keep} 份")
 
 
+def _print_qwenpaw_upgrade_guidance(report: detect.DetectReport) -> None:
+    commands = detect.qwenpaw_upgrade_guidance(
+        install_method=report.paw_install_method,
+        package=report.paw_package,
+        launcher_path=report.paw_launcher_path,
+    )
+    if report.paw_install_method == "script":
+        click.echo("如需升级 QwenPaw（官方脚本安装）：")
+    elif report.paw_install_method == "legacy-pip":
+        click.echo("检测到旧 copaw 包，建议迁移到 QwenPaw：")
+    else:
+        click.echo("如需升级 QwenPaw（pip 安装）：")
+    for cmd in commands:
+        click.echo(f"  {cmd}")
+
+
 @main.command("upgrade")
 @click.option("--workspace", "-w", default=None)
 @click.option("--all-workspaces", is_flag=True)
 @click.option("--with-lark-cli", is_flag=True, help="同时尝试升级全局 lark-cli")
+@click.option("--with-qwenpaw", is_flag=True, help="同时尝试升级 pip 安装的 QwenPaw")
 @click.option("--cn", is_flag=True, help="升级 lark-cli 时使用国内 npm 镜像")
 @click.option(
     "--backup-keep",
@@ -614,12 +631,37 @@ def upgrade_cmd(
     workspace: str | None,
     all_workspaces: bool,
     with_lark_cli: bool,
+    with_qwenpaw: bool,
     cn: bool,
     backup_keep: int,
 ) -> None:
     """小白一键升级：更新技能模板并给出下一步。"""
     _print_header("lark-bridge upgrade")
     click.echo("建议先执行：pip install -U lark-agent-bridge")
+    report = detect.run_full_detect()
+    if with_qwenpaw:
+        if report.paw_install_method == "script":
+            click.secho("  [!] 检测到 QwenPaw 可能由官方脚本安装，本工具不自动执行远程脚本。", fg="yellow")
+            _print_qwenpaw_upgrade_guidance(report)
+        else:
+            click.echo("正在尝试升级 QwenPaw（python -m pip install -U qwenpaw）…")
+            ok, msg = install.pip_install_qwenpaw_upgrade()
+            if ok:
+                click.secho("  [✓] QwenPaw pip 升级完成", fg="green")
+            else:
+                _fail_with_guidance(
+                    msg,
+                    commands=detect.qwenpaw_upgrade_guidance(
+                        install_method=report.paw_install_method,
+                        package=report.paw_package,
+                        launcher_path=report.paw_launcher_path,
+                    ),
+                    checks=["确认当前 Python 环境与 QwenPaw 安装环境一致"],
+                    error_code="LAB-SETUP-002",
+                )
+    else:
+        _print_qwenpaw_upgrade_guidance(report)
+
     if with_lark_cli:
         click.echo("正在尝试升级全局 lark-cli …")
         ok, msg = install.npm_install_lark_cli_global(cn_mirror=cn)

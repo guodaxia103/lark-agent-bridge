@@ -36,7 +36,7 @@
 
 ## 5. 发布动作
 
-- [ ] 创建并推送 tag（示例：`v0.3.9`）
+- [ ] 创建并推送 tag（示例：`v0.3.10`）
 - [ ] 确认 `publish-pypi.yml` 执行成功并上传 wheel/sdist
 - [ ] GitHub Release 已发布并附更新说明
 
